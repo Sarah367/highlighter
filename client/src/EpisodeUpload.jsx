@@ -91,6 +91,7 @@ export default function EpisodeUpload() {
                     placeholder="Episode 1: The Pilot"
                     disabled={uploading} // nobody can change the title halfway through
                 />
+                <small>For long episodes, upload the audio file.</small>
             </label>
 
             <label style={{display: "grid", gap: 4}}>
