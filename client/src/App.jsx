@@ -1,4 +1,5 @@
-import {useEffect, useState} from "react";
+import { useEffect, useState } from "react";
+import EpisodeUpload from "./EpisodeUpload";
 
 export default function App() {
   const [status, setStatus] = useState("Checking server...");
@@ -11,9 +12,10 @@ export default function App() {
   }, []);
 
   return (
-    <main>
+    <main style={{ padding: 24 }}>
       <h1>Highlighter</h1>
       <p>{status}</p>
+      <EpisodeUpload />
     </main>
-  )
+  );
 }
