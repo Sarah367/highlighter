@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import EpisodeUpload from "./EpisodeUpload";
+import EpisodeList from "./EpisodeList";
+import EpisodeView from "./EpisodeView";
+import { API_URL } from "./api";
 
 export default function App() {
   const [status, setStatus] = useState("Checking server...");
