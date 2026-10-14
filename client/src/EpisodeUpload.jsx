@@ -1,8 +1,8 @@
-import {useState} from "react";
+import { useState } from "react";
+import { ref, uploadBytesResumable } from "firebase/storage";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { db, storage } from "./firebase";
 import { API_URL } from "./api";
-import {ref, uploadBytesResumable} from "firebase/storage";
-import {collection, addDoc, serverTimestamp} from "firebase/firestore";
-import {db, storage} from "./firebase";
 
 const MAX_BYTES = 500 * 1024 * 1024; // 500 MB, same limit as Storage rules; just gives friendly message when user uploads more than 500 MB.
 

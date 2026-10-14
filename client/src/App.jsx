@@ -6,9 +6,10 @@ import { API_URL } from "./api";
 
 export default function App() {
   const [status, setStatus] = useState("Checking server...");
+  const [openEpisodeId, setOpenEpisodeId] = useState(null);
 
   useEffect(() => {
-    fetch("http://localhost:3001/api/health")
+    fetch(`${API_URL}/api/health`)
       .then((res) => res.json())
       .then((data) => setStatus(data.message))
       .catch(() => setStatus("Can't reach the server. Is it running?"));
@@ -18,7 +19,15 @@ export default function App() {
     <main style={{ padding: 24 }}>
       <h1>Highlighter</h1>
       <p>{status}</p>
-      <EpisodeUpload />
+
+      {openEpisodeId ? (
+        <EpisodeView episodeId={openEpisodeId} onBack={() => setOpenEpisodeId(null)}/>
+      ) : (
+        <>
+          <EpisodeUpload />
+          <EpisodeList onOpen={setOpenEpisodeId}/>
+        </>
+      )}
     </main>
   );
 }
