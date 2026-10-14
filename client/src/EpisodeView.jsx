@@ -18,7 +18,7 @@ function toSentences(words) {
     }
     // gets any leftover sentences from current
     if (current.length) sentences.push(current);
-    return sentences.map((ws) => ({start: ws[0].start, text: ws.map((w) => w.word).join(" ")}));
+    return sentences.map((ws) => ({ start: ws[0].start, words: ws, text: ws.map((w) => w.word).join(" ") }));
 }
 
 export default function EpisodeView({episodeId, onBack}) {
@@ -124,7 +124,24 @@ export default function EpisodeView({episodeId, onBack}) {
                     }}
                 >
                     <span style={{ opacity: 0.6, fontSize: 13, marginRight: 8 }}>{formatTime(s.start)}</span>
-                    {s.text}
+                    
+                    {i === activeIndex
+                        ? s.words.map((w, j) => (
+                            <span
+                                key={j}
+                                onClick={(e) => {
+                                e.stopPropagation(); // don't also trigger the sentence's click
+                                jumpTo(w.start);
+                                }}
+                                style={{
+                                borderRadius: 3,
+                                background: currentTime >= w.start && currentTime < w.end ? "rgba(47, 91, 211, 0.4)" : "transparent",
+                                }}
+                            >
+                                {w.word}{" "}
+                            </span>
+                            ))
+                        : s.text}
                 </p>
                 ))}
             </div>
