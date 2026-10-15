@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import {db, bucket} from "./firebaseAdmin.js";
 import { transcribeEpisode } from "./transcribeEpisode.js";
+import {searchTranscripts} from "./searchTranscripts.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -64,6 +65,21 @@ app.get("/api/episodes/:id/transcript", async (req, res) => {
         res.status(500).json({error: err.message});
     }
 });
+
+// finds every moment a word/phrase is said
+app.get("/api/search", async (req,res) => {
+    try {
+        const q = (req.query.q || "").trim();
+        if (!q) return res.status(400).json({error: "Add something to search for, like ?q=literally"});
+
+        const episodeIds = req.query.episodes ? req.query.episodes.split(",") : null;
+        const results = await searchTranscripts(q, episodeIds);
+        res.json({ query: q, count: results.length, results});
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({error: err.message});
+    }
+})
 
 app.listen(PORT, () => {
     console.log(`Server listening on http://localhost:${PORT}`);
