@@ -3,6 +3,7 @@
 import {FieldValue} from "firebase-admin/firestore";
 import {db, bucket} from "./firebaseAdmin.js";
 import { transcribeFromUrl } from "./deepgram.js";
+import {forgetTranscript} from "./transcriptStore.js";
 
 export async function transcribeEpisode(episodeId, { force = false} = {}) {
     const episodeRef = db.collection("episodes").doc(episodeId);
@@ -54,7 +55,11 @@ export async function transcribeEpisode(episodeId, { force = false} = {}) {
             durationSec: result.durationSec,
             createdAt: FieldValue.serverTimestamp(),
         });
+        // if this is an updated episode, clear it's cached copy so searches load the new version.
+        // if this is just a new episode, it doesn't matter if this function is called either way...
+        forgetTranscript(episodeId);
 
+        // mark the episode as "ready".
         await episodeRef.update({
             status: "ready",
             durationSec: result.durationSec,
