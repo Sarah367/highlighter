@@ -28,6 +28,7 @@ export default function EpisodeView({episodeId, startAt = 0, onBack}) {
     const [problem, setProblem] = useState("");
     const [currentTime, setCurrentTime] = useState(0);
     const mediaRef = useRef(null); // handle on the <video> or <audio> element
+    const listRef = useRef(null); // a handle on the scrolling transcript box.
 
     // 1. watch the episode's record live, so status changes appear immediately.
     useEffect(() => {
@@ -82,6 +83,8 @@ export default function EpisodeView({episodeId, startAt = 0, onBack}) {
         }
     }, [mediaUrl, startAt]);
 
+
+
     // only recalculate sentences when the words change
     const sentences = useMemo(() => toSentences(words), [words]);
 
@@ -91,6 +94,23 @@ export default function EpisodeView({episodeId, startAt = 0, onBack}) {
         if (sentences[i].start <= currentTime) activeIndex = i;
         else break;
     }
+
+    // keep the playing sentence in view if it's above or below the visible part
+    // of the transcript box, scroll the box so it sits about a third of the way down.
+    useEffect(() => {
+        const list = listRef.current;
+        const el = list?.querySelector(`[data-index="${activeIndex}"]`);
+        if (!list || !el) return;
+
+        const top = el.offsetTop;
+        const bottom = top + el.offsetHeight;
+        const visibleTop = list.scrollTop;
+        const visibleBottom = visibleTop + list.clientHeight;
+
+        if (top < visibleTop || bottom > visibleBottom) {
+            list.scrollTo({ top: top - list.clientHeight / 3, behavior: "smooth" });
+        }
+    }, [activeIndex]);
 
     function jumpTo(seconds) {
         const media = mediaRef.current;
@@ -131,11 +151,11 @@ export default function EpisodeView({episodeId, startAt = 0, onBack}) {
             {episode.status === "uploaded" && <p>Not transcribed yet. Go back and click Transcribe.</p>}
             {episode.status === "error" && <p>Transcription failed. Go back and click Retry.</p>}
             {problem && <p>Problem: {problem}</p>}
-
-            <div style={{ maxHeight: 420, overflowY: "auto", lineHeight: 1.6 }}>
+            <div ref={listRef} style={{ position: "relative", maxHeight: 420, overflowY: "auto", lineHeight: 1.6 }}>
                 {sentences.map((s, i) => (
                 <p
                     key={i}
+                    data-index={i}
                     onClick={() => jumpTo(s.start)}
                     style={{
                         cursor: "pointer",
