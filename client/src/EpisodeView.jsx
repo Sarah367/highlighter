@@ -21,7 +21,7 @@ function toSentences(words) {
     return sentences.map((ws) => ({ start: ws[0].start, words: ws, text: ws.map((w) => w.word).join(" ") }));
 }
 
-export default function EpisodeView({episodeId, onBack}) {
+export default function EpisodeView({episodeId, startAt = 0, onBack}) {
     const [episode, setEpisode] = useState(null);
     const [mediaUrl, setMediaUrl] = useState("");
     const [words, setWords] = useState([]);
@@ -64,6 +64,24 @@ export default function EpisodeView({episodeId, onBack}) {
             .catch((err) => setProblem(err.message));
     }, [episodeId, episode?.status]);
 
+    // if opened from a search result, jump to that moment once the player is ready.
+    useEffect(() => {
+        const media = mediaRef.current;
+        if (!media || !mediaUrl || startAt <= 0) return;
+
+        function seek() {
+            media.currentTime = Math.max(0, startAt-1); // a second early, to hear the audio
+            media.play().catch(() => {}); // some browsers block autoplay; just make the user press play.
+        }
+
+        if (media.readyState >= 1) {
+            seek();
+        } else {
+            media.addEventListener("loadedmetadata", seek, { once: true });
+            return () => media.removeEventListener("loadedmetadata", seek);
+        }
+    }, [mediaUrl, startAt]);
+
     // only recalculate sentences when the words change
     const sentences = useMemo(() => toSentences(words), [words]);
 
@@ -102,12 +120,16 @@ export default function EpisodeView({episodeId, onBack}) {
                     src={mediaUrl}
                     controls
                     onTimeUpdate={(e) => setCurrentTime(e.target.currentTime)}
+                    // if user opened from a search result, start a second early so they can hear the lead in.
+                    
                     style={{ width: "100%" }}
                 />
             )}
 
             <h3>Transcript</h3>
-            {episode.status !== "ready" && <p>Not transcribed yet. Go back and click Transcribe.</p>}
+            {episode.status === "transcribing" && <p>Transcribing… the transcript will appear here by itself.</p>}
+            {episode.status === "uploaded" && <p>Not transcribed yet. Go back and click Transcribe.</p>}
+            {episode.status === "error" && <p>Transcription failed. Go back and click Retry.</p>}
             {problem && <p>Problem: {problem}</p>}
 
             <div style={{ maxHeight: 420, overflowY: "auto", lineHeight: 1.6 }}>

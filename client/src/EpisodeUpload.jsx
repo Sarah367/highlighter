@@ -6,6 +6,9 @@ import { API_URL } from "./api";
 
 const MAX_BYTES = 500 * 1024 * 1024; // 500 MB, same limit as Storage rules; just gives friendly message when user uploads more than 500 MB.
 
+// formats that play and jump properly in every major browser.
+const PLAYABLE_FORMATS = ["mp4", "mov", "m4v", "webm", "mp3", "m4a", "wav", "aac", "ogg"];
+
 export default function EpisodeUpload() {
     const [title, setTitle] = useState("");
     const [file, setFile] = useState(null);
@@ -17,6 +20,15 @@ export default function EpisodeUpload() {
     function handleFileChange(e) {
         const chosen = e.target.files[0];
         if (!chosen) return;
+        const extension = chosen.name.split(".").pop().toLowerCase();
+        if (!PLAYABLE_FORMATS.includes(extension)) {
+            setFile(null);
+            setMessage(
+                `.${extension} files don't play properly in every browser. Please upload MP4, MOV, WebM, MP3, M4A, or WAV. ` +
+                "(Recorded with OBS? File → Remux Recordings converts MKV to MP4 in seconds.)"
+            );
+            return;
+        }
         if (chosen.size > MAX_BYTES) {
             setFile(null);
             setMessage("The file is over 500 MB. Try a shorter episode.");
@@ -102,7 +114,7 @@ export default function EpisodeUpload() {
                 <input
                     key={inputKey}
                     type="file"
-                    accept="video/*,audio/*"
+                    accept=".mp4,.mov,.m4v,.webm,.mp3,.m4a,.wav,.aac,.ogg"
                     onChange={handleFileChange}
                     disabled={uploading}
             />

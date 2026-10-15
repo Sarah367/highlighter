@@ -3,10 +3,11 @@ import EpisodeUpload from "./EpisodeUpload";
 import EpisodeList from "./EpisodeList";
 import EpisodeView from "./EpisodeView";
 import { API_URL } from "./api";
+import TranscriptSearch from "./TranscriptSearch";
 
 export default function App() {
   const [status, setStatus] = useState("Checking server...");
-  const [openEpisodeId, setOpenEpisodeId] = useState(null);
+  const [openEpisode, setOpenEpisode] = useState(null); // { id , startAt }
 
   useEffect(() => {
     fetch(`${API_URL}/api/health`)
@@ -19,15 +20,21 @@ export default function App() {
     <main style={{ padding: 24 }}>
       <h1>Highlighter</h1>
       <p>{status}</p>
-
-      {openEpisodeId ? (
-        <EpisodeView episodeId={openEpisodeId} onBack={() => setOpenEpisodeId(null)}/>
+ 
+      {openEpisode ? (
+        <EpisodeView
+          episodeId={openEpisode.id}
+          startAt={openEpisode.startAt}
+          onBack={() => setOpenEpisode(null)}
+        />
       ) : (
         <>
           <EpisodeUpload />
-          <EpisodeList onOpen={setOpenEpisodeId}/>
+          <TranscriptSearch onResult={(id, seconds) => setOpenEpisode({ id, startAt: seconds })} />
+          <EpisodeList onOpen={(id) => setOpenEpisode({ id, startAt: 0 })} />
         </>
       )}
     </main>
   );
+
 }
