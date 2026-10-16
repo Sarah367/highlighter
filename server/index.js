@@ -3,6 +3,7 @@ import cors from "cors";
 import {db, bucket} from "./firebaseAdmin.js";
 import { transcribeEpisode } from "./transcribeEpisode.js";
 import {searchTranscripts} from "./searchTranscripts.js";
+import { PRESETS, createContest, listContests, getContest} from "./contests.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -80,6 +81,44 @@ app.get("/api/search", async (req,res) => {
         res.status(500).json({error: err.message});
     }
 })
+
+// the presets, so the app's form always matches the server's.
+app.get("/api/contest-presets", (req, res) => {
+    res.json(PRESETS);
+});
+
+// checks contest and saves it as a draft.
+app.post("/api/contests", async (req,res) => {
+    try {
+        const contest = await createContest(req.body);
+        res.status(201).json(contest);
+    } catch(err) {
+        if (!err.status) console.error(err);
+        res.status(err.status || 500).json({error: err.message, details: err.details});
+    }
+});
+
+// lists every contest, newest first.
+app.get("/api/contests", async(req,res) => {
+    try {
+        res.json(await listContests());
+    } catch(err) {
+        console.error(err);
+        res.status(500).json({error: err.message});
+    }
+});
+
+// gets one contest
+app.get("/api/contest/:id", async (req, res) => {
+    try {
+        const contest = await getContest(req.params.id);
+        if (!contest) return res.status(404).json({error: "No contest with that ID."});
+        res.json(contest);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({error: err.message});
+    }
+});
 
 app.listen(PORT, () => {
     console.log(`Server listening on http://localhost:${PORT}`);
