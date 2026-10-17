@@ -35,47 +35,44 @@ export default function TranscriptSearch({onResult, episodeIds}) {
             setSearching(false); // turns off searching, whether it worked or not. 
         }
     }
-
-      return (
-        <section style={{ maxWidth: 640, marginTop: 32, textAlign: "left" }}>
-            <h2>Search what was said</h2>
-
-            <form onSubmit={search} style={{ display: "flex", gap: 8 }}>
-            <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder='A word or phrase, like "literally"'
-                style={{ flex: 1 }}
-            />
+    
+    return (
+        <section className="block">
+        <h2>Search what was said</h2>
+        <p>Find every moment a word or phrase comes up, then jump straight to it.</p>
+    
+        <form className="search" onSubmit={search}>
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder='Try a word or phrase, like "literally"' aria-label="Search transcripts" />
             <button type="submit" disabled={searching}>
-                {searching ? "Searching…" : "Search"}
+            {searching ? "Searching…" : "Search"}
             </button>
-            </form>
-            {error && <p>Problem: {error}</p>}
-            {results && (
-            <p>
-                {results.length === 0
-                ? "No matches."
-                : `${results.length} moment${results.length === 1 ? "" : "s"} found${results.length >= 200 ? " (showing the first 200)" : ""}.`}
+        </form>
+    
+        {error && <p className="alert">{error}</p>}
+        {results && (
+            <p className="hint">
+            {results.length === 0
+                ? "No matches. Try a different word or a shorter phrase."
+                : `${results.length} moment${results.length === 1 ? "" : "s"} found${results.length >= 200 ? " (showing the first 200)" : ""}`}
             </p>
-            )}
-            <ul style={{ listStyle: "none", padding: 0, display: "grid", gap: 6 }}>
-            {results?.map((r, i) => (
-            <li key={i}>
-                <button
-                onClick={() => onResult(r.episodeId, r.start)}
-                style={{ width: "100%", textAlign: "left", padding: "8px 10px", cursor: "pointer" }}
-                >
-                <span style={{ opacity: 0.7, fontSize: 13 }}>
-                    {r.episodeTitle} · {formatTime(r.start)}
-                </span>
-                <br />
-                …{r.before} <mark>{r.match}</mark> {r.after}…
+        )}
+    
+        {results?.length > 0 && (
+            <ul className="rows">
+            {results.map((r, i) => (
+                <li key={i} className="result-item">
+                <button className="result" onClick={() => onResult(r.episodeId, r.start)}>
+                    <span className="result-meta">
+                    {r.episodeTitle}, {formatTime(r.start)}
+                    </span>
+                    <span>
+                    …{r.before} <mark>{r.match}</mark> {r.after}…
+                    </span>
                 </button>
-            </li>
+                </li>
             ))}
-        </ul>
+            </ul>
+        )}
         </section>
-  );
-
+    );
 }
