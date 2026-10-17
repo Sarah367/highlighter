@@ -7,3 +7,8 @@ export function formatTime(totalSeconds) {
     return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${sec}` : `${m}:${sec}`;
 
 }
+
+// Turns cents into dollars for display: 17500 -> "$175.00"
+export function formatMoney(cents) {
+  return ((cents ?? 0) / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
+}

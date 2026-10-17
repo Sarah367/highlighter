@@ -130,63 +130,57 @@ export default function EpisodeView({episodeId, startAt = 0, onBack}) {
     const MediaTag = episode.contentType?.startsWith("audio/") ? "audio" : "video";
 
     return (
-        <section style={{ maxWidth: 760, textAlign: "left" }}>
-            <button onClick={onBack}>← All episodes</button>
-            <h2>{episode.title}</h2>
-
-            {mediaUrl && (
-                <MediaTag
-                    ref={mediaRef}
-                    src={mediaUrl}
-                    controls
-                    onTimeUpdate={(e) => setCurrentTime(e.target.currentTime)}
-                    // if user opened from a search result, start a second early so they can hear the lead in.
-                    
-                    style={{ width: "100%" }}
-                />
-            )}
-
-            <h3>Transcript</h3>
-            {episode.status === "transcribing" && <p>Transcribing… the transcript will appear here by itself.</p>}
-            {episode.status === "uploaded" && <p>Not transcribed yet. Go back and click Transcribe.</p>}
-            {episode.status === "error" && <p>Transcription failed. Go back and click Retry.</p>}
-            {problem && <p>Problem: {problem}</p>}
-            <div ref={listRef} style={{ position: "relative", maxHeight: 420, overflowY: "auto", lineHeight: 1.6 }}>
+        <section>
+        <button className="btn-quiet" onClick={onBack}>
+            Back to episodes
+        </button>
+        <div className="page-head" style={{ marginTop: 8 }}>
+            <h1>{episode.title}</h1>
+        </div>
+    
+        {mediaUrl && (
+            <MediaTag
+            ref={mediaRef}
+            className="player"
+            src={mediaUrl}
+            controls
+            onTimeUpdate={(e) => setCurrentTime(e.target.currentTime)}
+            />
+        )}
+    
+        <div className="block" style={{ marginTop: 40 }}>
+            <h2>Transcript</h2>
+            <p>Click any sentence or word to jump there.</p>
+    
+            {episode.status === "transcribing" && <p className="notice">Transcribing. The transcript will appear here by itself.</p>}
+            {episode.status === "uploaded" && <p className="notice">Not transcribed yet. Go back and click Transcribe.</p>}
+            {episode.status === "error" && <p className="alert">Transcription failed. Go back and click Retry.</p>}
+            {problem && <p className="alert">{problem}</p>}
+    
+            {sentences.length > 0 && (
+            <div ref={listRef} className="transcript">
                 {sentences.map((s, i) => (
-                <p
-                    key={i}
-                    data-index={i}
-                    onClick={() => jumpTo(s.start)}
-                    style={{
-                        cursor: "pointer",
-                        margin: "0 0 6px",
-                        padding: "4px 8px",
-                        borderRadius: 6,
-                        background: i === activeIndex ? "rgba(47, 91, 211, 0.15)" : "transparent",
-                    }}
-                >
-                    <span style={{ opacity: 0.6, fontSize: 13, marginRight: 8 }}>{formatTime(s.start)}</span>
-                    
+                <p key={i} data-index={i} className={`sentence${i === activeIndex ? " active" : ""}`} onClick={() => jumpTo(s.start)}>
+                    <span className="ts">{formatTime(s.start)}</span>
                     {i === activeIndex
-                        ? s.words.map((w, j) => (
-                            <span
-                                key={j}
-                                onClick={(e) => {
-                                e.stopPropagation(); // don't also trigger the sentence's click
-                                jumpTo(w.start);
-                                }}
-                                style={{
-                                borderRadius: 3,
-                                background: currentTime >= w.start && currentTime < w.end ? "rgba(47, 91, 211, 0.4)" : "transparent",
-                                }}
-                            >
-                                {w.word}{" "}
-                            </span>
-                            ))
-                        : s.text}
+                    ? s.words.map((w, j) => (
+                        <span
+                            key={j}
+                            className={`word${currentTime >= w.start && currentTime < w.end ? " current" : ""}`}
+                            onClick={(e) => {
+                            e.stopPropagation(); // don't also trigger the sentence's click
+                            jumpTo(w.start);
+                            }}
+                        >
+                            {w.word}{" "}
+                        </span>
+                        ))
+                    : s.text}
                 </p>
                 ))}
             </div>
+            )}
+        </div>
         </section>
     );
 }

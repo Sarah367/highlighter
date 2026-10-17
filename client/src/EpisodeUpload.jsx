@@ -95,40 +95,35 @@ export default function EpisodeUpload() {
     const uploading = status === "uploading";
 
     return (
-        <section style={{ maxWidth: 480, display: "grid", gap: 12}}>
-            <h2>Upload an episode</h2>
-
-            <label style={{display: "grid", gap: 4}}>
-                Episode title
-                <input
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Episode 1: The Pilot"
-                    disabled={uploading} // nobody can change the title halfway through
-                />
-                <small>For long episodes, upload the audio file.</small>
+        <section className="panel">
+        <h2>Upload an episode</h2>
+        <div className="stack">
+            <label className="field">
+            <span className="label">Episode title</span>
+            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Episode 12: The road trip" disabled={uploading} />
             </label>
-
-            <label style={{display: "grid", gap: 4}}>
-                Video or audio file
-                <input
-                    key={inputKey}
-                    type="file"
-                    accept=".mp4,.mov,.m4v,.webm,.mp3,.m4a,.wav,.aac,.ogg"
-                    onChange={handleFileChange}
-                    disabled={uploading}
-            />
+    
+            <label className="field">
+            <span className="label">Video or audio file</span>
+            <input key={inputKey} type="file" accept=".mp4,.mov,.m4v,.webm,.mp3,.m4a,.wav,.aac,.ogg" onChange={handleFileChange} disabled={uploading} />
+            <span className="hint">MP4, MOV, WebM, MP3, M4A or WAV, up to 500 MB. For long episodes, upload the audio file.</span>
             </label>
-            {/* button is disabled when uploading */}
-            <button onClick={handleUpload} disabled={uploading}> 
-                {uploading ? "Uploading..." : "Upload Episode"}
-            </button>
+    
             {uploading && (
-                <div>
-                    <progress value={progress} max="100" style={{width: "100%"}} /> {progress}%
-                </div>
+            <div className="field">
+                <progress value={progress} max="100" />
+                <span className="hint">Uploading… {progress}%</span>
+            </div>
             )}
-            {message && <p>{message}</p>}
+    
+            {message && <p className={status === "error" ? "alert" : "notice"}>{message}</p>}
+    
+            <div className="actions">
+            <button className="btn-primary" onClick={handleUpload} disabled={uploading}>
+                {uploading ? "Uploading…" : "Upload episode"}
+            </button>
+            </div>
+        </div>
         </section>
     );
 }
