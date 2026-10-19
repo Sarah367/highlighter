@@ -553,3 +553,28 @@ audio.player {
 .block > .hint {
   margin-top: 12px;
 }
+
+.block > .brief {
+  margin-top: 8px;
+  color: var(--ink); /* the brief is content, not a muted description */
+  white-space: pre-wrap; /* keep the creator's line breaks */
+  max-width: 65ch;
+}
+ 
+.details {
+  display: grid;
+  grid-template-columns: 170px 1fr;
+  gap: 12px 24px;
+  margin: 16px 0 0;
+}
+.details dt {
+  color: var(--muted);
+}
+.details dd {
+  margin: 0;
+}
+ 
+@media (max-width: 600px) {
+  .details { grid-template-columns: 1fr; gap: 2px; }
+  .details dd { margin-bottom: 12px; }
+}
