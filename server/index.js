@@ -109,7 +109,7 @@ app.get("/api/contests", async(req,res) => {
 });
 
 // gets one contest
-app.get("/api/contest/:id", async (req, res) => {
+app.get("/api/contests/:id", async (req, res) => {
     try {
         const contest = await getContest(req.params.id);
         if (!contest) return res.status(404).json({error: "No contest with that ID."});
