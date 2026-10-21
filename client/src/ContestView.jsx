@@ -1,6 +1,7 @@
-import {useEffect, useState} from "react";
+import {useEffect, useCallback, useState} from "react";
 import { API_URL } from "./api";
 import {formatMoney} from "./format";
+import FundContest from "./FundContest";
 
 const STATUS_LABELS = {
     draft: "Draft",
@@ -38,6 +39,9 @@ function formatLength(totalSeconds) {
 export default function ContestView({contestId, presets, onBack}) {
     const [contest, setContest] = useState(null);
     const [problem, setProblem] = useState("");
+    // called by paypal button once payment is captured. server will send back the updated contest.
+    // useCallback keeps it the same function so paypal button doesn't have to be set up again. 
+    const handleFunded = useCallback((updated) => setContest(updated), []); 
 
     useEffect(() => {
         fetch(`${API_URL}/api/contests/${contestId}`)
@@ -87,8 +91,18 @@ export default function ContestView({contestId, presets, onBack}) {
                             Your contest opens to fans once the prize pool of <strong>{formatMoney(contest.prizeTotalCents)}</strong> is paid.
                             Funding up front shows fans the prizes are real, and winners are paid from it when the contest ends.
                         </p>
-                        <p className="hint">PayPal checkout goes here in the next step.</p>
+                        <FundContest contest={contest} onFunded={handleFunded} />
                     </div>
+                </section>
+            )}
+            {contest.status === "open" && (
+                <section className="panel">
+                    <h2>Prize pool funded</h2>
+                    <p>
+                        You paid <strong>{formatMoney(contest.prizeTotalCents)}</strong> with PayPal
+                        {contest.fundedAt ? ` on ${new Date(contest.fundedAt).toLocaleDateString([], { dateStyle: "long" })}` : ""}. Your
+                        contest is open, and fans can enter until {deadline}.
+                    </p>
                 </section>
             )}
             <div className="block">
