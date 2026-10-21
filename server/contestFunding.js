@@ -37,3 +37,38 @@ export async function startFunding(contestId) {
     await ref.update({pendingOrderId: order.id});
     return {orderId: order.id};
 }
+
+// creator approved the payment in PayPal.
+export async function finishFunding(contestId, orderId) {
+    if (!orderId) throw fail("Missing the PayPal order ID.", 400);
+
+    const {ref, contest} = await loadContest(contestId);
+
+    // already done with this exact order (such as retried request) then just return the contest.
+    if (contest.status == "open" && contest.paypalOrderId === orderId) return getContest(contestId);
+    // if the contest's status is not a draft, that means it's already been funded (since it must be funded to move from draft status to open status).
+    if (contest.status !== "draft") throw fail("This contest's prize pool is already funded.", 409);
+    // prevents someone from reusing an orderId from a different, cheaper contest to fund the prize pool.
+    if (contest.pendingOrderId !== orderId) throw fail("That PayPal order doesn't belong to this contest!", 400);
+
+    const result = await captureOrder(orderId);
+    const capture = result.purchase_units?.[0]?.payments?.captures?.[0];
+    if (result.status !== "COMPLETED" || capture?.status !== "COMPLETED") {
+        throw fail(`PayPal didn't complete the payment (status: ${capture?.status ?? result.status}).`, 402);
+    }
+
+    // make sure PayPal charged exactly the prize total in US currency.
+    const expected = centsToValue(contest.prizeTotalCents);
+    if (capture.amount.value !== expected || capture.amount.currency_code !== "USD") {
+        throw fail(`PayPal charged ${capture.amount.value} ${capture.amount.currency_code}, but the prize pool is ${expected} USD.`, 409);
+    }
+
+    await ref.update({
+        status: "open",
+        paypalOrderId: orderId,
+        paypalCaptureId: capture.id, // PayPal's receipt number for this payment
+        fundedAt: FieldValue.serverTimestamp(),
+        pendingOrderId: FieldValue.delete(),
+    });
+    return getContest(contestId);
+}

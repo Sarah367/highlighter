@@ -4,6 +4,7 @@ import {db, bucket} from "./firebaseAdmin.js";
 import { transcribeEpisode } from "./transcribeEpisode.js";
 import {searchTranscripts} from "./searchTranscripts.js";
 import { PRESETS, createContest, listContests, getContest} from "./contests.js";
+import { startFunding, finishFunding } from "./contestFunding.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -119,6 +120,31 @@ app.get("/api/contests/:id", async (req, res) => {
         res.status(500).json({error: err.message});
     }
 });
+
+function sendError(res, err) {
+    if (!err.status || err.status >= 500) console.error(err.paypal ?? err);
+    res.status(err.status || 500).json({error: err.message});
+}
+
+// funding; create the PayPal order for a contest's prize pool
+app.post("/api/contests/:id/order", async (req,res) => {
+    try {
+        res.json(await startFunding(req.params.id));
+
+    } catch (err) {
+        sendError(res, err);
+    }
+});
+
+// after the creator approves in PayPal, capture the payment and open the contest.
+app.post("/api/contests/:id/capture", async(req,res) => {
+    try {
+        res.json(await finishFunding(req.params.id, req.body.orderId));
+    } catch (err) {
+        sendError(res, err);
+    }
+});
+
 
 app.listen(PORT, () => {
     console.log(`Server listening on http://localhost:${PORT}`);

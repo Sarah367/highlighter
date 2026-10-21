@@ -108,6 +108,7 @@ function toJson(doc) {
         ...data,
         deadline: data.deadline?.toDate().toISOString() ?? null,
         createdAt: data.createdAt?.toDate().toISOString() ?? null,
+        fundedAt: data.fundedAt?.toDate().toISOString() ?? null,
     };
 }
 
