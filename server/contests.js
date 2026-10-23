@@ -1,5 +1,43 @@
 import {FieldValue} from "firebase-admin/firestore";
 import {db} from "./firebaseAdmin.js";
+
+//  only these fields are shared publicly. No PayPal IDs, no internal bookkeeping.
+const PUBLIC_FIELDS = [
+    "title", "brief", "preset", "entryFormats", "minLengthSec", "maxLengthSec", "maxEntriesPerFan",
+    "sourceRule", "fakeQuoteCheck", "deadline", "prizesCents", "prizeTotalCents", "status", "entryCount", "fundedAt",
+];
+
+// a contest as fans see it, plus the episodes they're allowed to use.
+// returns null for draft contests: a contest isn't public until its prize pool is funded...
+export async function getPublicContest(id) {
+    const contest = await getContest(id);
+    // draft contests are rejected..
+    if (!contest || contest.status === "draft") return null;
+
+    const pub = {id: contest.id, entryCount: 0};
+    for (const field of PUBLIC_FIELDS) { // copies only the listed contest fields 
+        if (contest[field] !== undefined) {
+            pub[field] = contest[field]; 
+        }
+    }
+    // the list of episodes that fans can search and use: none, the creator's picks, or every transcribed episode.
+    let episodeDocs = [];
+
+    if (contest.sourceRule !== "none") {
+        if (contest.eligibleEpisodeIds?.length) { // creator's narrowed episodes
+            const refs = contest.eligibleEpisodeIds.map((episodeId) => db.collection("episodes").doc(episodeId));
+            episodeDocs = (await db.getAll(...refs)).filter((d) => d.exists && d.data().status === "ready");
+        } else { // otherwise just return every transcribed episode. 
+            episodeDocs = (await db.collection("episodes").where("status", "==", "ready").get()).docs;
+
+        }
+    }
+
+    // fans get episode's ID, title, and length
+    pub.episodes = episodeDocs.map((d) => ({id: d.id, title: d.data().title, durationSec: d.data().durationSec ?? null}));
+    
+    return pub;
+}
 // contests: checking what the creator sent, and saving it as a draft...
 
 // presets is just a starting set of settings for common contest types. The creator can change any of the settings.

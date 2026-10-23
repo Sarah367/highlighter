@@ -39,6 +39,7 @@ function formatLength(totalSeconds) {
 export default function ContestView({contestId, presets, onBack}) {
     const [contest, setContest] = useState(null);
     const [problem, setProblem] = useState("");
+    const [copied, setCopied] = useState(false);
     // called by paypal button once payment is captured. server will send back the updated contest.
     // useCallback keeps it the same function so paypal button doesn't have to be set up again. 
     const handleFunded = useCallback((updated) => setContest(updated), []); 
@@ -67,6 +68,8 @@ export default function ContestView({contestId, presets, onBack}) {
     }
 
     const formats = contest.entryFormats.map((f) => (f === "video" ? "Video" : "Audio")).join(" or ");
+    const shareUrl = `${window.location.origin}/c/${contest.id}`;
+
     const deadline = new Date(contest.deadline).toLocaleString([], {dateStyle: "full", timeStyle: "short"});
 
     return (
@@ -97,14 +100,26 @@ export default function ContestView({contestId, presets, onBack}) {
             )}
             {contest.status === "open" && (
                 <section className="panel">
-                    <h2>Prize pool funded</h2>
+                <h2>Prize pool funded</h2>
+                <div className="stack">
                     <p>
-                        You paid <strong>{formatMoney(contest.prizeTotalCents)}</strong> with PayPal
-                        {contest.fundedAt ? ` on ${new Date(contest.fundedAt).toLocaleDateString([], { dateStyle: "long" })}` : ""}. Your
-                        contest is open, and fans can enter until {deadline}.
+                    You paid <strong>{formatMoney(contest.prizeTotalCents)}</strong> with PayPal
+                    {contest.fundedAt ? ` on ${new Date(contest.fundedAt).toLocaleDateString([], { dateStyle: "long" })}` : ""}. Your
+                    contest is open, and fans can enter until {deadline}.
                     </p>
+                    <div className="field">
+                    <span className="label">Share this link with your fans</span>
+                    <div className="share">
+                        <input readOnly value={shareUrl} onFocus={(e) => e.target.select()} aria-label="Contest link" />
+                        <button onClick={() => navigator.clipboard.writeText(shareUrl).then(() => setCopied(true))}>
+                        {copied ? "Copied" : "Copy link"}
+                        </button>
+                    </div>
+                    </div>
+                </div>
                 </section>
             )}
+            
             <div className="block">
                 <h2>Brief</h2>
                 <p className="brief">{contest.brief}</p>

@@ -1,21 +1,46 @@
 import { useEffect, useState } from "react";
+import {Link,Route, Routes} from "react-router-dom";
 import EpisodeUpload from "./EpisodeUpload";
 import EpisodeList from "./EpisodeList";
 import EpisodeView from "./EpisodeView";
 import TranscriptSearch from "./TranscriptSearch";
 import ContestsPage from "./ContestsPage";
+import PublicContestPage from "./PublicContestPage";
 import {API_URL} from "./api";
 
 export default function App() {
   const [serverDown, setServerDown] = useState(false);
-  const [tab, setTab] = useState("episodes"); // "episodes" or "contests"
-  const [openEpisode, setOpenEpisode] = useState(null); // { id , startAt }
 
+  // only say something about the server when it's unreachable.
   useEffect(() => {
     fetch(`${API_URL}/api/health`)
       .then((res) => setServerDown(!res.ok))
       .catch(() => setServerDown(true));
   }, []);
+
+  return (
+    <>
+      {serverDown && (
+        <div className="banner" role="alert">
+          Can't reach the server. Start it with npm run dev in the server folder, then refresh.
+        </div>
+      )}
+
+      {/* Which page to show depends on the address */}
+      <Routes>
+        <Route path="/c/:contestId" element={<PublicContestPage/>}/>
+        <Route path="*" element={<CreatorApp/>}/>
+      </Routes>
+    </>
+  );
+}
+
+// the creator's side: Episodes and Contests tabs.
+function CreatorApp() {
+  const [tab, setTab] = useState("episodes"); // "episodes" or "contests"
+  // which episode is open, and when to start playing. null = show the tab's screen.
+  const [openEpisode, setOpenEpisode] = useState(null);
+
 
   function showTab(name) {
     setTab(name);
@@ -26,9 +51,9 @@ export default function App() {
     <>
       <header className="app-header">
         <div className="container header-inner">
-          <span className="brand">
+          <Link to="/" className="brand" onClick={() => showTab("episodes")}>
             <span className="marker">Highlighter</span>
-          </span>
+          </Link>
           <nav className="tabs" aria-label="Sections">
             <button className="tab" aria-pressed={tab === "episodes"} onClick={() => showTab("episodes")}>
               <span>Episodes</span>
@@ -39,12 +64,6 @@ export default function App() {
           </nav>
         </div>
       </header>
- 
-      {serverDown && (
-        <div className="banner" role="alert">
-          Can't reach the server. Start it with npm run dev in the server folder, then refresh.
-        </div>
-      )}
  
       <main className="container page">
         {openEpisode ? (
