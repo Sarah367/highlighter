@@ -21,7 +21,7 @@ function toSentences(words) {
     return sentences.map((ws) => ({ start: ws[0].start, words: ws, text: ws.map((w) => w.word).join(" ") }));
 }
 
-export default function EpisodeView({episodeId, startAt = 0, onBack}) {
+export default function EpisodeView({episodeId, startAt = 0, onBack, backLabel="Back to episodes"}) {
     const [episode, setEpisode] = useState(null);
     const [mediaUrl, setMediaUrl] = useState("");
     const [words, setWords] = useState([]);
@@ -121,10 +121,14 @@ export default function EpisodeView({episodeId, startAt = 0, onBack}) {
 
     if (!episode) {
         return (
-        <section>
-            <button onClick={onBack}>← All episodes</button>
-            <p>{problem || "Loading episode…"}</p>
-        </section>
+            <section>
+                <button className="btn-quiet" onClick={onBack}>
+                    {backLabel}
+                </button>
+                <p className={problem ? "alert" : "notice"} style={{ marginTop: 16 }}>
+                    {problem || "Loading episode…"}
+                </p>
+            </section>
         );
     }
     const MediaTag = episode.contentType?.startsWith("audio/") ? "audio" : "video";
@@ -132,7 +136,7 @@ export default function EpisodeView({episodeId, startAt = 0, onBack}) {
     return (
         <section>
         <button className="btn-quiet" onClick={onBack}>
-            Back to episodes
+            {backLabel}
         </button>
         <div className="page-head" style={{ marginTop: 8 }}>
             <h1>{episode.title}</h1>
