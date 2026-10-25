@@ -88,8 +88,21 @@ export async function createEntry(contestId, input) {
         const [exists] = await file.exists();
         if (!exists) throw fail("The entry file is missing. Please upload it again.", 400);
         
-        // -----------------------------------
-        // LEFT OFF HERE
+        const [meta] = await file.getMetadata();
+        const sizeBytes = Number(meta.size);
+        const contentType = meta.contentType || "";
+        const kind = contentType.startsWith("video/") ? "video" : contentType.startsWith("audio/") ? "audio" : null;
+
+        if (!kind || !contest.entryFormats.includes(kind)) {
+            throw fail(`This contest only accepts ${contest.entryFormats.join(" or ")} entries.`, 400);
+
+        }
+        if (sizeBytes > MAX_ENTRY_BYTES) throw fail(`Entries can be up to 2 GB.`, 400);
+
+        // length comes from browser for now. screening checks the real length later.
+        if (Number.isFinite(durationSec) && (durationSec < contest.minLengthSec -1 || durationSec > contest.maxLengthSec +1)) {
+            throw fail(`Entries must be ${describeLength(contest.minLengthSec)} to ${describeLength(contest.maxLengthSec)} long.`, 400);
+        }
     }
 }
 
