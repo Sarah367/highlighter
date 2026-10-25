@@ -53,10 +53,10 @@ async function deleteUpload(contestId, storagePath) {
 // before uploading, ask if this fan can still enter. saves them from uploading a big file for nothing
 export async function checkCanEnter(contestId, rawEmail) {
     const email = normalizeEmail(rawEmail);
-    if (!EMAIL_PATTERN.test(email)) throw fail("Enter a valid PayPal email.");
+    if (!EMAIL_PATTERN.test(email)) throw fail("Enter a valid PayPal email.",  400);
 
     const { contest } = await loadOpenContest(contestId);
-    const used = (await entriesByFan(contestId, email).get()).size();
+    const used = (await entriesByFan(contestId, email).get()).size;
     if (used >= contest.maxEntriesPerFan) {
         throw fail(limitMessage(contest.maxEntriesPerFan), 409); // if user has surpassed their entries
     }
@@ -75,7 +75,7 @@ export async function createEntry(contestId, input) {
     try {
         const errors = [];
         if (fanName.length < 1 || fanName.length > 60) errors.push("Add the name you want to be credited as (up to 60 characters).");
-        if (!EMAIL_PATTERN.test(email)) errors.push("Keep the title under 100 characters.");
+        if (!EMAIL_PATTERN.test(email)) errors.push("Enter a valid PayPal email.");
         if (title.length > 100) errors.push("Keep the title under 100 characters.");
         if (description.length > 1000) errors.push("Keep the description under 1000 characters.");
         if (!storagePath.startsWith(`entries/${contestId}/`)) errors.push("The entry file is missing. Please upload it again.");
@@ -103,6 +103,37 @@ export async function createEntry(contestId, input) {
         if (Number.isFinite(durationSec) && (durationSec < contest.minLengthSec -1 || durationSec > contest.maxLengthSec +1)) {
             throw fail(`Entries must be ${describeLength(contest.minLengthSec)} to ${describeLength(contest.maxLengthSec)} long.`, 400);
         }
+
+        // A transaction re-checks the entry limit and saves everything at once, so two submissions
+        // arriving at the same moment can't both slip past the limit or miscount.
+        const entryRef = db.collection("entries").doc(); // new ID, chosen before saving
+        const entryCount = await db.runTransaction(async (tx) => {
+            const [contestSnap, mine] = await Promise.all([tx.get(contestRef), tx.get(entriesByFan(contestId, email))]);
+            const current = contestSnap.data();
+            if (mine.size >= current.maxEntriesPerFan) throw fail(limitMessage(current.maxEntriesPerFan), 409);
+
+            tx.set(entryRef, {
+                contestId,
+                fanName,
+                paypalEmail: email, // private: never shown publicly
+                title: title || null,
+                description: description || null,
+                storagePath,
+                contentType,
+                sizeBytes,
+                durationSec: Number.isFinite(durationSec) ? durationSec : null,
+                status: "submitted", // screening moves it to "shortlisted" or "flagged"
+                createdAt: FieldValue.serverTimestamp(),
+            });
+            tx.update(contestRef, {entryCount: FieldValue.increment(1)});
+
+            return (current.entryCount ?? 0) + 1;
+        });
+
+        return {id: entryRef.id, status: "submitted", entryCount};
+    } catch (err) {
+        await deleteUpload(contestId, storagePath); // a rejected entry's file isn't kept.
+        throw err;
     }
-}
+} 
 

@@ -1,10 +1,11 @@
 import express from "express";
 import cors from "cors";
-import {db, bucket} from "./firebaseAdmin.js";
+import { db, bucket } from "./firebaseAdmin.js";
 import { transcribeEpisode } from "./transcribeEpisode.js";
-import {searchTranscripts} from "./searchTranscripts.js";
-import { PRESETS, createContest, listContests, getContest, getPublicContest} from "./contests.js";
+import { searchTranscripts } from "./searchTranscripts.js";
+import { PRESETS, createContest, listContests, getContest, getPublicContest } from "./contests.js";
 import { startFunding, finishFunding } from "./contestFunding.js";
+import { checkCanEnter, createEntry } from "./entries.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -151,6 +152,24 @@ app.get("/api/public/contests/:id", async (req,res) => {
         const contest = await getPublicContest(req.params.id);
         if (!contest) return res.status(404).json({error: "This contest doesn't exist or isn't open yet."});
         res.json(contest);
+    } catch (err) {
+        sendError(res, err);
+    }
+});
+
+// entries, step 1: before uploading, check that this fan can still enter.
+app.post("/api/contests/:id/entries/check", async (req, res) => {
+    try {
+        res.json(await checkCanEnter(req.params.id, req.body.paypalEmail));
+    } catch (err) {
+        sendError(res,err);
+    }
+});
+
+// entries, step 2: after uploading, check every rule, and save the entry.
+app.post("/api/contests/:id/entries", async (req, res) => {
+    try {
+        res.status(201).json(await createEntry(req.params.id, req.body));
     } catch (err) {
         sendError(res, err);
     }
