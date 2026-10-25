@@ -6,6 +6,7 @@ import { searchTranscripts } from "./searchTranscripts.js";
 import { PRESETS, createContest, listContests, getContest, getPublicContest } from "./contests.js";
 import { startFunding, finishFunding } from "./contestFunding.js";
 import { checkCanEnter, createEntry } from "./entries.js";
+import { screenEntry, listEntries } from "./screenEntry.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -169,11 +170,36 @@ app.post("/api/contests/:id/entries/check", async (req, res) => {
 // entries, step 2: after uploading, check every rule, and save the entry.
 app.post("/api/contests/:id/entries", async (req, res) => {
     try {
-        res.status(201).json(await createEntry(req.params.id, req.body));
+        const entry = await createEntry(req.params.id, req.body);
+        res.status(201).json(entry);
+        // start screening in the background, fan gets confirmation quickly while server transcribes and checks
+        // the entry on its own time.
+        screenEntry(entry.id).catch((err) => console.error(`Screening ${entry.id} failed: `, err.message));
+        
     } catch (err) {
         sendError(res, err);
     }
 });
+// screening, run for one entry or redo with force
+app.post("/api/entries/:id/screen", async (req,res) => {
+    try {
+        res.json(await screenEntry(req.params.id, {force: req.query.force === "true"}));
+
+    } catch (err) {
+        sendError(res,err);
+    }
+});
+
+// creator's list of contest's entries, with the screening results
+app.get("/api/contests/:id/entries", async(req, res) => {
+    try {
+        res.json(await listEntries(req.params.id));
+    } catch (err) {
+        sendError(res,err);
+    }
+});
+
+// 
 
 app.listen(PORT, () => {
     console.log(`Server listening on http://localhost:${PORT}`);
