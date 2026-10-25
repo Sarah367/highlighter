@@ -631,3 +631,14 @@ a.brand {
 @media (max-width: 600px) {
   .stats { grid-template-columns: 1fr; }
 }
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+ 
+@media (max-width: 600px) {
+  .grid-2 { grid-template-columns: 1fr; }
+}

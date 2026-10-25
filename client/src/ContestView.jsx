@@ -83,6 +83,9 @@ export default function ContestView({contestId, presets, onBack}) {
                 <div className="meta" style={{marginTop: 10}}>
                     <span className={`status status-${contest.status}`}>{STATUS_LABELS[contest.status] ?? contest.status}</span>
                     <span>{presets[contest.preset]?.label ?? "Custom"}</span>
+                    <span>
+                        {(contest.entryCount ?? 0).toLocaleString()} {contest.entryCount === 1 ? "entry" : "entries"}
+                    </span>
                     <span>Ends {deadline}</span>
                 </div>
             </div>

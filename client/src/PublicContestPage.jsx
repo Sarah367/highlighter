@@ -1,10 +1,11 @@
-import {useEffect, useState} from "react";
-import {Link, useParams} from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useParams } from "react-router-dom";
 import { API_URL } from "./api";
 import { formatMoney, formatTime } from "./format";
 import { PrizeList, RulesList, timeLeft } from "./contestDetails";
 import TranscriptSearch from "./TranscriptSearch";
 import EpisodeView from "./EpisodeView";
+import EntryForm from "./EntryForm";
 
 // the page a creator shares with fans: /c/CONTEST_ID
 export default function PublicContestPage() {
@@ -66,6 +67,10 @@ export default function PublicContestPage() {
                     <div className="stats">
                         <div>
                             <span className="stat-value">{formatMoney(contest.prizeTotalCents)}</span>
+                            <span className="stat-label">Prize pool, funded with PayPal</span>
+                        </div>
+                        <div>
+                            <span className="stat-value">{entries.toLocaleString()}</span>
                             <span className="stat-label">{entries === 1 ? "Entry so far" : "Entries so far"}</span>
                         </div>
                         <div>
@@ -78,11 +83,12 @@ export default function PublicContestPage() {
                 </div>
                 <section className="panel">
                     <h2>{isOpen ? "Enter this contest" : "This contest is closed"}</h2>
-                    <p className="muted">
-                        {isOpen
-                            ? "Entry submission is coming next. Read the brief and rules below, then start creating."
-                            : "Entries are no longer being accepted."}
-                    </p>
+                    {isOpen ? (
+                        // After a successful entry, show the new count right away.
+                        <EntryForm contest={contest} onSubmitted={(count) => setContest((c) => ({ ...c, entryCount: count }))} />
+                    ) : (
+                        <p className="muted">Entries are no longer being accepted.</p>
+                    )}
                 </section>
                 <div className="block">
                     <h2>Brief</h2>
@@ -114,7 +120,7 @@ export default function PublicContestPage() {
                             </ul>
                             </section>
                         </>
-                        )}
+                )}
             </>
         );
     }
