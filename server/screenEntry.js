@@ -5,7 +5,7 @@ import { db, bucket } from "./firebaseAdmin.js";
 import { transcribeFromUrl } from "./deepgram.js";
 import { getTranscript } from "./transcriptStore.js";
 import { normalize } from "./searchTranscripts.js";
-import { findSources } from "./matchSources.js";
+import { findSources, longestContinuousPiece } from "./matchSources.js";
 import { getPublicContest } from "./contests.js";
  
 const UNMATCHED_LIMIT = 0.3; // in "required" contests, flag entries where over 30% of the speech isn't from the episodes
@@ -14,6 +14,11 @@ function fail(message, status) {
     const err = new Error(message);
     err.status = status;
     return err;
+}
+
+function clock(seconds) {
+    const s = Math.floor(seconds);
+    return `${Math.floor(s/60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
 function describeLength(totalSeconds) {
@@ -85,18 +90,26 @@ export async function screenEntry(entryId, {force = false} = {}) {
                     message: `About ${Math.round(unmatchedShare * 100)}% of the speech in this entry doesn't match your episodes.`,
                 });
             }
+            const longest = longestContinuousPiece(sources.segments);
+            if (longest && duration && longest.length >= duration * 0.8) {
+                flags.push({
+                    type: "unedited",
+                    message: `This entry looks like an unedited stretch of "${longest.episodeTitle}" (${clock(longest.episodeStart)} to ${clock(longest.episodeEnd)}), not an edited entry.`,
+                });
+            }
         }
 
         // context check would be here.
 
-        const status = flags.length > 0 ? "flagged" : "shortedlisted";
+        const status = flags.length > 0 ? "flagged" : "shortlisted";
         await entryRef.update({
             status,
             screening: {
                 durationSec: duration,
                 wordCount: result.words.length,
                 transcriptPath,
-                matchedWords: sources?.shortWords ?? null,
+                matchedWords: sources?.matchedWords ?? null,
+                shortWords: sources?.shortWords ?? null,
                 unmatchedWords: sources?.unmatchedWords ?? null,
                 segments: sources?.segments.slice(0,300) ?? [], // capped, to stay well under Firestore's 1 MB limit
                 unmatchedRuns: sources?.unmatchedRuns.slice(0, 50) ?? [],
