@@ -19,6 +19,7 @@ export function findSources(entryWords, episodes, normalize) {
     episodeNorm.forEach((words, e) => {
         for (let p = 0; p + MIN_RUN <= words.length; p++) {
             const key = words.slice(p, p + MIN_RUN).join(" ");
+            if (!index.has(key)) index.set(key, []);
             index.get(key).push([e,p]); // maps to a specific episode and time, quick lookup with map
         }
     });
@@ -92,4 +93,37 @@ export function findSources(entryWords, episodes, normalize) {
         shortWords,
         unmatchedWords,
     };
+}
+
+// purpose of the function below is for entries that match 100%; these are just junk entries that upload the creator's
+// video directly, with no editing or cuts made... 
+// the function below joins traced pieces that continue straight on from each other in the same episode (no cut in between)
+// and returns the longest stretch. A cut shows up as a jump: entry suddenly matches a different
+// place in the episode, or a different episode.
+
+export function longestContinuousPiece(segments) {
+    let best = null;
+    let run = null;
+
+    for (const s of segments) {
+        const offset = s.episodeStart - s.entryStart; // how far the entry is "shifted" from the episode.
+        const continues =
+            run && 
+            s.episodeId === run.episodeId &&
+            Math.abs(offset - run.offset) < 2 && // still same distance apart, so no cut
+            s.entryStart - run.entryEnd < 2; // and no long gap in the entry
+
+        if (continues) {
+            run.entryEnd = s.entryEnd;
+            run.episodeEnd = s.episodeEnd;
+        } else {
+            run = {...s, offset}; // a cut: start a new stretch here.
+        }
+
+        const length = run.entryEnd - run.entryStart;
+        if (!best || length > best.length) best = {...run, length};
+
+    }
+
+    return best;
 }
