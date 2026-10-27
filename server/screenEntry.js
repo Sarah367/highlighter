@@ -7,6 +7,7 @@ import { getTranscript } from "./transcriptStore.js";
 import { normalize } from "./searchTranscripts.js";
 import { findSources, longestContinuousPiece } from "./matchSources.js";
 import { getPublicContest } from "./contests.js";
+import { checkContext } from "./contextCheck.js";
  
 const UNMATCHED_LIMIT = 0.3; // in "required" contests, flag entries where over 30% of the speech isn't from the episodes
 // 30% due to the fact that deepgram mishears words and is not completely accurate.
@@ -73,8 +74,8 @@ export async function screenEntry(entryId, {force = false} = {}) {
         }
 
         let sources = null;
+        const episodes = []; // eligible episodes' transcripts, also used by context check function 
         if (contest.sourceRule !== "none" && contest.episodes.length > 0) {
-            const episodes = [];
             for (const ep of contest.episodes) {
                 const transcript = await getTranscript(ep.id);
                 if (transcript) episodes.push({id: ep.id, title: ep.title, words: transcript.words});
@@ -99,7 +100,24 @@ export async function screenEntry(entryId, {force = false} = {}) {
             }
         }
 
-        // context check would be here.
+        // does the entry put the creator's speech in a misleading context?
+        // gemini checks the traced pieces and contest brief, only when contest has it turned on and there are traced pieces to judge.
+        let contextCheck = null;
+        if (contest.fakeQuoteCheck && sources?.segments.length > 0) {
+            try {
+                contextCheck = await checkContext({contest, segments: sources.segments, episodes});
+                for (const issues of contextCheck.issues) {
+                    if (issue.risk === "low") continue; // kept in the results, but not worth a flag
+                    const label = issue.kind === "fake-quote" ? "Possible fake quote" : "Possibly out of context";
+                    flags.push({ type: "context", risk: issue.risk, message: `${label} (${issue.risk} risk): "${issue.quote}". ${issue.explanation}` });
+                }
+            } catch (err) {
+                // if Gemini is down / busy, finish screening anyway, but make sure the creator knows.
+                contextCheck = {error: err.message};
+                flags.push({ type: "unchecked", message: `The context check couldn't run (${err.message}). Re-screen this entry to try again.` });
+            }
+        }
+
 
         const status = flags.length > 0 ? "flagged" : "shortlisted";
         await entryRef.update({
@@ -113,6 +131,7 @@ export async function screenEntry(entryId, {force = false} = {}) {
                 unmatchedWords: sources?.unmatchedWords ?? null,
                 segments: sources?.segments.slice(0,300) ?? [], // capped, to stay well under Firestore's 1 MB limit
                 unmatchedRuns: sources?.unmatchedRuns.slice(0, 50) ?? [],
+                contextCheck, // gemini's verdict on whether the entry misrepresents the creator's speech, if it ran
                 flags,
                 screenedAt: FieldValue.serverTimestamp(),
             },
