@@ -109,7 +109,7 @@ export async function screenEntry(entryId, {force = false} = {}) {
         let contextCheck = null;
         if (contest.fakeQuoteCheck && sources?.segments.length > 0) {
             try {
-                contextCheck = await checkContext({contest, segments: sources.segments, episodes});
+                contextCheck = await checkContext({contest, segments: sources.segments, episodes, entryWords: result.words});
                 for (const issue of contextCheck.issues) {
                     if (issue.risk === "low") continue; // kept in the results, but not worth a flag
                     const label = issue.kind === "fake_quote" ? "Possible fake quote" : "Possibly out of context";

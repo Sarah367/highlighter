@@ -26,6 +26,19 @@ const SCHEMA = {
                 required: ["piece", "originalMeaning", "entryMeaning", "meaningChanged"],
             },
         },
+        spliceReviews: {
+            type: "ARRAY",
+            items: {
+                type: "OBJECT",
+                properties: {
+                    splice: {type: "INTEGER"},
+                    whatCreatorActuallySaid: {type: "STRING"}, // original sentences in the creator's real meaning
+                    whatViewerHears: {type: "STRING"}, // what the joined passage sounds like the creator is saying
+                    isFakeQuote: {type: "BOOLEAN"}, // true if the joined passage is a fake quote, false if it is not
+                    },
+                    required: ["splice", "whatCreatorActuallySaid", "whatViewerHears", "isFakeQuote"],
+                },
+            },
         issues: {
             type: "ARRAY",
             items: {
@@ -42,7 +55,7 @@ const SCHEMA = {
         },
         summary: {type: "STRING"}, // one sentence summary of the review
     },
-    required: ["pieceReviews", "issues", "summary"],
+    required: ["pieceReviews", "spliceReviews", "issues", "summary"],
 
 };
 
@@ -97,7 +110,72 @@ function describePieces(segments, episodes) {
         .join("\n\n");
 }
 
-function buildPrompt(contest, segments, episodes) {
+function findSplices(pieces) {
+    const splices = [];
+    let current = null;
+    for (let i = 0; i < pieces.length-1; i++) {
+        const a = pieces[i];
+        const b = pieces[i+1];
+        const backToBack = b.entryStart - a.entryEnd < 1.5; 
+        const sameStretch =
+            a.episodeId === b.episodeId && Math.abs(b.episodeStart - b.entryStart - (a.episodeStart - a.entryStart)) < 2;
+        // two pieces are a splice if they play back to back in the entry but come from different places in the original episodes.
+        if (backToBack && !sameStretch) {
+            if (current && current[current.length-1] === i) {
+                current.push(i+1); // splice keeps going.
+            } else {
+                current = [i, i+1]; // new splice starts
+                splices.push(current);
+            }
+        } else {
+            current = null; // splice ends
+        }
+    }
+    return splices; // lists of piece positions, like [[1,2]] for pieces 2 and 3
+}
+
+function describeSplices(splices,pieces,episodes) {
+    if (splices.length === 0) return "None: no pieces from different places play back to back.";
+    const byId = new Map(episodes.map((ep) => [ep.id, ep]));
+    return splices
+        .map((indexes, n) => {
+            const passage = indexes.map((i) => pieces[i].text).join(" ");
+            const sources = indexes
+                .map((i) => {
+                    const s = pieces[i];
+                    const sentence = fullSentence(byId.get(s.episodeId)?.words ?? [], s.episodeStart, s.episodeEnd);
+                    return `    Piece ${i + 1} ("${s.text}") really came from: "${sentence}"`;
+                })
+                .join("\n");
+            return `Splice ${n + 1} (pieces ${indexes.map((i) => i + 1).join(" + ")}).\n  As the entry plays it: "${passage}"\n${sources}`;
+        })
+        .join("\n\n");
+}
+
+// entry's full transcript, exactly as it plays, with each traced piece in [brackets] labelled by its
+// number. Words outside the brackets couldn't be traced to a specific moment (too short, or transcribed a little differently )
+// but they're still part of what viewers hear, so the model needs to see them too.
+function markedTranscript(entryWords, pieces) {
+    const parts = [];
+    let open = null; // index of the piece that is currently open in brackets, or null if none
+
+    for (const w of entryWords) { // walk through the entry's words in order
+        const index =  // find which piece this word belongs to, if any
+        pieces.findIndex((p) => w.start >= p.entryStart - 0.01 && w.start < p.entryEnd - 0.01);
+        if (index !== open) { // we're entering or leaving a piece
+            if (open !== null && open !== -1) parts.push("]"); // close the previous piece
+            if (index !== -1) parts.push(`[${index +1}:`); 
+            open = index; // update the current piece index
+        }
+        parts.push(w.word); // add the word to the transcript
+    }
+    if (open !== null && open !== -1) parts.push("]"); // close the last piece if it was open
+    return parts.join(" ").replace(/\[(\d+): /g, "[$1: ").replace(/ \]/g, "]"); // clean up spacing around brackets
+}
+
+function buildPrompt(contest, segments, episodes, entryWords = []) {
+    const pieces = segments.slice(0, MAX_PIECES);
+    const splices = findSplices(pieces);
     return `You are protecting a creator from being misrepresented by fan-made edits on Highlighter.
   A fan made this entry by cutting pieces out of the creator's real episodes. Every piece below is real
   audio of the creator, listed in the order the entry plays them, along with the full original sentence
@@ -116,7 +194,25 @@ function buildPrompt(contest, segments, episodes) {
   - Dropping a negation or qualifier: "not," "never," "I used to," "some people think."
   - Splicing: pieces from different places played back to back so they sound like one new sentence.
   
-  Step 2. List issues only for pieces where meaningChanged is true:
+  Step 2. Review EVERY splice listed under "The splices", one at a time, in spliceReviews. A splice is
+  pieces from different places that play back to back, so a viewer hears them as one statement. Judge the
+  joined passage as a whole, not each piece on its own:
+  - whatCreatorActuallySaid: what the creator really said and meant in the original sentences.
+  - whatViewerHears: what the joined passage sounds like the creator is saying.
+  - isFakeQuote: true only if JOINING the pieces creates a new statement that none of the pieces says on its
+    own, like "I can't wait" + "to quit" becoming "I can't wait to quit." If a splice is misleading only
+    because one of its pieces was cut out of context, mark it false: that piece is reported through
+    pieceReviews instead, so it isn't reported twice.
+  If there are no splices, return an empty list.
+  
+  Untraced words: words in the full transcript that sit outside the [brackets] couldn't be matched to a specific
+  moment, usually because they're too short or were transcribed a little differently, but they are most likely
+  still the creator's real words. Check them too. If untraced words combine with a neighbouring piece into a
+  statement the creator never made (for example, an untraced "I'm never gonna" right before a piece that says
+  "love my job"), report it as a fake_quote issue listing the neighbouring piece's number, with the full
+  passage as the quote.
+  
+  Step 3. List issues for every piece where meaningChanged is true and every splice where isFakeQuote is true:
   - kind: "fake_quote" for a splice of two or more pieces; "out_of_context" for a single piece cut so its
     meaning changed.
   - risk: "high" if a viewer would likely believe the creator said or meant it; "medium" if plausibly
@@ -130,24 +226,68 @@ function buildPrompt(contest, segments, episodes) {
   - Anything just because it's rude, silly, or edgy. Only misrepresentation matters.
   - Whether the entry fits the contest brief. That is checked separately, so ignore it here.
   
-  Step 3. Give a one-sentence summary of whether the entry misrepresents the creator.
+  Step 4. Give a one-sentence summary of whether the entry misrepresents the creator.
   
   For background only, the contest type is "${contest.preset}".
   
+  What the entry says, in full, as it plays (traced pieces in [brackets], numbered):
+  
+  "${markedTranscript(entryWords, pieces)}"
+  
   The pieces:
   
-  ${describePieces(segments, episodes)}`;
-}
+  ${describePieces(pieces, episodes)}
+  
+  The splices:
+  
+  ${describeSplices(splices, pieces, episodes)}`;
+  }
+  
+  
 
-// Runs the check. Returns { model, summary, pieceReviews, issues }, keeping only well-formed issues.
-export async function checkContext({ contest, segments, episodes }) {
-    const { answer, model } = await askGeminiJson(buildPrompt(contest, segments, episodes), SCHEMA);
+// Runs the check. Returns { model, summary, pieceReviews, spliceReviews, issues }.
+export async function checkContext({ contest, segments, episodes, entryWords = [] }) {
+    const { answer, model } = await askGeminiJson(buildPrompt(contest, segments, episodes, entryWords), SCHEMA);
+    const pieces = segments.slice(0, MAX_PIECES);
+    const splices = findSplices(pieces);
+    const pieceReviews = Array.isArray(answer.pieceReviews) ? answer.pieceReviews : [];
+    const spliceReviews = Array.isArray(answer.spliceReviews) ? answer.spliceReviews : [];
     const issues = Array.isArray(answer.issues)
       ? answer.issues.filter((issue) => issue && issue.quote && issue.explanation && ["low", "medium", "high"].includes(issue.risk))
       : [];
-    const pieceReviews = Array.isArray(answer.pieceReviews) ? answer.pieceReviews : [];
-    return { model, summary: String(answer.summary ?? ""), pieceReviews, issues };
-  }
+        // Safety net: the step-by-step reviews are the careful part of the answer, so they count even if the
+        // model forgot to list them as issues. Any review that found a problem but has no matching issue gets one.
+        const covered = new Set(issues.flatMap((issue) => issue.pieces ?? []));
+        for (const review of spliceReviews) {
+            const indexes = splices[review.splice - 1];
+            if (!review.isFakeQuote || !indexes) continue;
+            const numbers = indexes.map((i) => i + 1);
+            if (numbers.some((n) => covered.has(n))) continue;
+            issues.push({
+            pieces: numbers,
+            kind: "fake_quote",
+            risk: "medium",
+            quote: indexes.map((i) => pieces[i].text).join(" "),
+            explanation: `${review.whatViewerHears} But the creator actually said: ${review.whatCreatorActuallySaid}`,
+            });
+            numbers.forEach((n) => covered.add(n));
+        }
+        for (const review of pieceReviews) {
+            const piece = pieces[review.piece - 1];
+            if (!review.meaningChanged || !piece || covered.has(review.piece)) continue;
+            issues.push({
+            pieces: [review.piece],
+            kind: "out_of_context",
+            risk: "medium",
+            quote: piece.text,
+            explanation: `${review.entryMeaning} But the creator meant: ${review.originalMeaning}`,
+            });
+            covered.add(review.piece);
+        }
+
+        return { model, summary: String(answer.summary ?? ""), pieceReviews, spliceReviews, issues };
+}
+
   
 // exported for testing: lets you see exactly what gemini is asked
-export { buildPrompt };
+export { buildPrompt, markedTranscript };
