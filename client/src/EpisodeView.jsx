@@ -116,7 +116,7 @@ export default function EpisodeView({episodeId, startAt = 0, onBack, backLabel="
         const media = mediaRef.current;
         if (!media)return;
         media.currentTime = seconds;
-        media.play();
+        media.play().catch(() => {}); // some browsers block autoplay; just make the user press play.
     }
 
     if (!episode) {
