@@ -43,7 +43,11 @@ export async function screenEntry(entryId, {force = false} = {}) {
         return {id: entryId, status: entry.status, cached: true};
     }
 
-    await entryRef.update({status: "screening"});
+    // a label for this screening run. If the entry is re-screened while this run is still going,
+    // a newer run gets a new label, and the older run will be ignored when it finishes.
+    const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    await entryRef.update({status: "screening", screeningRunId: runId});
+    const stillLatest = async () => (await entryRef.get()).data()?.screeningRunId === runId;
 
     try {
         // getPublicContest also tells us which episodes this contest's entries may use.
@@ -106,9 +110,9 @@ export async function screenEntry(entryId, {force = false} = {}) {
         if (contest.fakeQuoteCheck && sources?.segments.length > 0) {
             try {
                 contextCheck = await checkContext({contest, segments: sources.segments, episodes});
-                for (const issues of contextCheck.issues) {
+                for (const issue of contextCheck.issues) {
                     if (issue.risk === "low") continue; // kept in the results, but not worth a flag
-                    const label = issue.kind === "fake-quote" ? "Possible fake quote" : "Possibly out of context";
+                    const label = issue.kind === "fake_quote" ? "Possible fake quote" : "Possibly out of context";
                     flags.push({ type: "context", risk: issue.risk, message: `${label} (${issue.risk} risk): "${issue.quote}". ${issue.explanation}` });
                 }
             } catch (err) {
@@ -120,6 +124,8 @@ export async function screenEntry(entryId, {force = false} = {}) {
 
 
         const status = flags.length > 0 ? "flagged" : "shortlisted";
+        // a newer run started while this one was working: let that one save, not this one!
+        if (!await stillLatest()) return {id: entryId, status: "superseded"};
         await entryRef.update({
             status,
             screening: {
@@ -139,7 +145,9 @@ export async function screenEntry(entryId, {force = false} = {}) {
         });
         return {id: entryId, status, flags};
     } catch (err) {
-        await entryRef.update({status: "error", error: err.message});
+        if (await stillLatest().catch(() => false)) {
+            await entryRef.update({ status: "error", error: err.message });
+        }
         throw err;
     }
 }
