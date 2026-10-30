@@ -7,6 +7,7 @@ import TranscriptSearch from "./TranscriptSearch";
 import ContestsPage from "./ContestsPage";
 import PublicContestPage from "./PublicContestPage";
 import {API_URL} from "./api";
+import EntriesPage from "./EntriesPage";
 
 export default function App() {
   const [serverDown, setServerDown] = useState(false);
@@ -40,11 +41,18 @@ function CreatorApp() {
   const [tab, setTab] = useState("episodes"); // "episodes" or "contests"
   // which episode is open, and when to start playing. null = show the tab's screen.
   const [openEpisode, setOpenEpisode] = useState(null);
-
+  // which contests the entries tab shows. null = pick the newest contest
+  const [entriesContestId, setEntriesContestId] = useState(null);
 
   function showTab(name) {
     setTab(name);
     setOpenEpisode(null);
+  }
+
+  // contest's "Review entries" button, switch to the Entries tab, showing that contest and it's entries
+  function reviewEntries(contestId) {
+    setEntriesContestId(contestId);
+    showTab("entries");
   }
   
   return (
@@ -60,6 +68,9 @@ function CreatorApp() {
             </button>
             <button className="tab" aria-pressed={tab === "contests"} onClick={() => showTab("contests")}>
               <span>Contests</span>
+            </button>
+            <button className="tab" aria-pressed={tab === "entries"} onClick={() => showTab("entries")}>
+              <span>Entries</span>
             </button>
           </nav>
         </div>
@@ -78,8 +89,10 @@ function CreatorApp() {
             <TranscriptSearch onResult={(id, seconds) => setOpenEpisode({ id, startAt: seconds })} />
             <EpisodeList onOpen={(id) => setOpenEpisode({ id, startAt: 0 })} />
           </>
+        ) : tab === "contests" ? (
+          <ContestsPage onReviewEntries={reviewEntries} />
         ) : (
-          <ContestsPage />
+          <EntriesPage contestId={entriesContestId} onChangeContest={setEntriesContestId} />
         )}
       </main>
     </>

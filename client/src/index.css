@@ -642,3 +642,134 @@ a.brand {
 @media (max-width: 600px) {
   .grid-2 { grid-template-columns: 1fr; }
 }
+
+/* ---------- Entry review ---------- */
+ 
+.entry-group {
+  margin-top: 28px;
+}
+.entry-group h3 {
+  margin-bottom: 10px;
+}
+.entry-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.entry-card {
+  display: grid;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+ 
+/* Flags: a coloured edge shows the risk at a glance. */
+.flags {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.flag {
+  display: grid;
+  gap: 2px;
+  padding: 8px 12px;
+  border-left: 3px solid #e3b341;
+  background: #fffaf0;
+  border-radius: 0 8px 8px 0;
+  font-size: 14.5px;
+}
+.flag-high {
+  border-left-color: var(--danger);
+  background: #fef3f2;
+}
+.flag-low {
+  border-left-color: var(--rule);
+  background: var(--hover);
+}
+.flag-type {
+  font-size: 12.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+ 
+/* "Where the clips came from" */
+.sources summary {
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--muted);
+}
+.sources ul {
+  margin: 8px 0 0;
+  padding-left: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+}
+ 
+/* Live screening steps */
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  font-size: 14px;
+  color: var(--muted);
+}
+.steps li::before {
+  content: "○";
+  display: inline-block;
+  margin-right: 5px;
+}
+.steps li.done {
+  color: var(--success);
+}
+.steps li.done::before {
+  content: "✓";
+}
+.steps li.current {
+  color: var(--ink);
+  font-weight: 600;
+}
+.steps li.current::before {
+  content: "◐";
+  animation: spin 1.2s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .steps li.current::before { animation: none; }
+}
+
+/* ---------- Entries tab ---------- */
+ 
+select {
+  font: inherit;
+  font-size: 15px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 10px 12px;
+  width: 100%;
+}
+select:focus {
+  outline: none;
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px var(--marker-soft);
+}
+.contest-picker {
+  max-width: 480px;
+  margin-bottom: 8px;
+}

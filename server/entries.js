@@ -137,3 +137,22 @@ export async function createEntry(contestId, input) {
     }
 } 
 
+
+// creator's decision. shortlist, reject, or null to undo their decision
+// stored separately from AI's verdict because the AI only flags while the creator actually decides.
+export async function decideEntry(entryId, decision) {
+    if (decision !== null && decision !== "shortlist" && decision !== "reject") {
+        throw fail("The decision must be shortlist, reject, or null.", 400);
+    }
+
+    const ref = db.collection("entries").doc(entryId);
+    const snap = await ref.get();
+    if (!snap.exists) throw fail("No entry with that ID.", 404);
+
+    await ref.update({
+        creatorDecision: decision,
+        decidedAt: decision ? FieldValue.serverTimestamp() : null,
+    });
+    return {id: entryId, creatorDecision: decision};
+}
+

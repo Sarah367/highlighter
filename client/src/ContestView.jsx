@@ -36,7 +36,7 @@ function formatLength(totalSeconds) {
 
 // One contest showing prize, rules, status. 
 // Draft contests show where the funding goes.
-export default function ContestView({contestId, presets, onBack}) {
+export default function ContestView({contestId, presets, onBack, onReviewEntries}) {
     const [contest, setContest] = useState(null);
     const [problem, setProblem] = useState("");
     const [copied, setCopied] = useState(false);
@@ -122,12 +122,25 @@ export default function ContestView({contestId, presets, onBack}) {
                 </div>
                 </section>
             )}
-            
+            {/* open contests: how many entries so far, and a button to the Entries tab to review them */}
+            {contest.status !== "draft" && (
+                <section className="panel">
+                    <h2>Entries</h2>
+                    <div className="actions" style={{ justifyContent: "space-between" }}>
+                        <span>
+                            {(contest.entryCount ?? 0).toLocaleString()} {contest.entryCount === 1 ? "entry" : "entries"} so far
+                        </span>
+                        <button className="btn-primary" onClick={() => onReviewEntries(contest.id)}>
+                            Review entries
+                        </button>
+                    </div>
+                </section>
+                
+            )}
             <div className="block">
                 <h2>Brief</h2>
                 <p className="brief">{contest.brief}</p>
             </div>
-
             <div className="block">
                 <h2>Prizes</h2>
                 <ul className="rows">
