@@ -5,7 +5,7 @@ import ContestView from "./ContestView";
 import { API_URL } from "./api";
 
 // creator's contest screen: form on top, their contests below.
-export default function ContestPage() {
+export default function ContestPage({onReviewEntries}) {
     const [presets, setPresets] = useState(null);
     const [loadError, setLoadError] = useState("");
     const [refreshKey, setRefreshKey] = useState(0); 
@@ -24,7 +24,7 @@ export default function ContestPage() {
 
     // one contest is open; show that specific contest view instead of the list.
     if (openContestId) {
-        return <ContestView contestId={openContestId} presets={presets} onBack={()=> setOpenContestId(null)}/>;
+        return <ContestView contestId={openContestId} presets={presets} onBack={()=> setOpenContestId(null)} onReviewEntries={onReviewEntries}/>;
     }
 
     return (

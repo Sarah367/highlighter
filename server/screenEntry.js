@@ -36,7 +36,7 @@ export async function screenEntry(entryId, {force = false} = {}) {
 
     if (!snap.exists) throw fail("No entry with that ID.", 404);
     const entry = snap.data();
-
+    const log = (message) => console.log(`[screening ${entryId}] ${message}`);
     // same pattern as transcribing episodes: never screen twice at once, never redo finished work.
     if (entry.status === "screening" && !force) throw fail("This entry is already being screened.", 409);
     if (entry.status !== "submitted" && entry.status !== "error" && !force) {
@@ -46,8 +46,13 @@ export async function screenEntry(entryId, {force = false} = {}) {
     // a label for this screening run. If the entry is re-screened while this run is still going,
     // a newer run gets a new label, and the older run will be ignored when it finishes.
     const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    await entryRef.update({status: "screening", screeningRunId: runId});
+    await entryRef.update({status: "screening", screeningRunId: runId, screeningStep: "transcribing"});
+
     const stillLatest = async () => (await entryRef.get()).data()?.screeningRunId === runId;
+
+    // records which step this run is on, so review can show LIVE progress.
+    // never allowed to fail the screening: progress is nice to have
+    const setStep = (step) => entryRef.update({screeningStep: step}).catch(() => {});
 
     try {
         // getPublicContest also tells us which episodes this contest's entries may use.
@@ -55,6 +60,7 @@ export async function screenEntry(entryId, {force = false} = {}) {
         if (!contest) throw fail("This entry's contest isn't available.", 404);
 
         // 1. transcribe the entry with deepgram, the same way as episodes are transcribed.
+        log("1/4 Transcribing with Deepgram...");
         const [signedUrl] = await bucket.file(entry.storagePath).getSignedUrl({
             version: "v4",
             action: "read",
@@ -69,14 +75,16 @@ export async function screenEntry(entryId, {force = false} = {}) {
         const flags = []; // each flag: {type, message}. the creator sees these and decides.
 
         // 2. the real length, measured by Deepgram. The browser's number could have been faked.
+        log("2/4 Checking the real length...");
         const duration = result.durationSec;
         if (duration != null && (duration < contest.minLengthSec - 1 || duration > contest.maxLengthSec+1)) {
             flags.push({
                 type: "length",
-                message: `This entry is ${describeLength(duration)} long, but the contest allows ${describeLength(contest.minLengthSec)} to ${describeLength(contest.maxLengthSec)}`,
+                message: `This entry is ${describeLength(duration)} long, but the contest allows ${describeLength(contest.minLengthSec)} to ${describeLength(contest.maxLengthSec)}.`,
             });
         }
-
+        log("3/4 Tracing pieces back to episodes...");
+        await setStep("tracing");
         let sources = null;
         const episodes = []; // eligible episodes' transcripts, also used by context check function 
         if (contest.sourceRule !== "none" && contest.episodes.length > 0) {
@@ -108,6 +116,8 @@ export async function screenEntry(entryId, {force = false} = {}) {
         // gemini checks the traced pieces and contest brief, only when contest has it turned on and there are traced pieces to judge.
         let contextCheck = null;
         if (contest.fakeQuoteCheck && sources?.segments.length > 0) {
+            log("4/4 Asking Gemini for the context check...");
+            await setStep("checking_context");
             try {
                 contextCheck = await checkContext({contest, segments: sources.segments, episodes, entryWords: result.words});
                 for (const issue of contextCheck.issues) {
@@ -128,6 +138,7 @@ export async function screenEntry(entryId, {force = false} = {}) {
         if (!await stillLatest()) return {id: entryId, status: "superseded"};
         await entryRef.update({
             status,
+            screeningStep: FieldValue.delete(), // finished, no step to show.
             screening: {
                 durationSec: duration,
                 wordCount: result.words.length,
@@ -145,8 +156,10 @@ export async function screenEntry(entryId, {force = false} = {}) {
         });
         return {id: entryId, status, flags};
     } catch (err) {
+        log(`Failed: ${err.message}`);
+        // only newest runs report errors, so slow failed runs don't overwrite newer results.
         if (await stillLatest().catch(() => false)) {
-            await entryRef.update({ status: "error", error: err.message });
+            await entryRef.update({ status: "error", error: err.message, screeningStep: FieldValue.delete() });
         }
         throw err;
     }
@@ -162,6 +175,7 @@ export async function listEntries(contestId) {
                 id: doc.id,
                 ...data,
                 createdAt: data.createdAt?.toDate().toISOString() ?? null,
+                decidedAt: data.decidedAt?.toDate().toISOString() ?? null,
                 screening: data.screening
                     ? { ...data.screening, screenedAt: data.screening.screenedAt?.toDate().toISOString() ?? null}
                     : null,

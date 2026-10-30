@@ -7,6 +7,7 @@ import { PRESETS, createContest, listContests, getContest, getPublicContest } fr
 import { startFunding, finishFunding } from "./contestFunding.js";
 import { checkCanEnter, createEntry } from "./entries.js";
 import { screenEntry, listEntries } from "./screenEntry.js";
+import { decideEntry } from "./entries.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -194,6 +195,14 @@ app.post("/api/entries/:id/screen", async (req,res) => {
 app.get("/api/contests/:id/entries", async(req, res) => {
     try {
         res.json(await listEntries(req.params.id));
+    } catch (err) {
+        sendError(res,err);
+    }
+});
+// creator's decision on entry
+app.post("/api/entries/:id/decision", async (req,res) => {
+    try {
+        res.json(await decideEntry(req.params.id, req.body.decision ?? null));
     } catch (err) {
         sendError(res,err);
     }
