@@ -18,6 +18,7 @@ const STEPS = [
     {key: "transcribing", label: "Transcribing"},
     {key: "tracing", label:"Tracing sources"},
     {key: "checking_context", label: "Checking context"},
+    {key: "final_checks", label: "Final checks"},
 ];
 
 const FLAG_LABELS = {
@@ -26,6 +27,8 @@ const FLAG_LABELS = {
     unedited: "Unedited",
     length: "Length",
     unchecked: "Not checked",
+    duplicate: "Duplicate",
+    brief: "Brief",
 };
 
 // which group an entry belongs in. the creator's decision always wins over the AI's verdict

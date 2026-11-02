@@ -45,7 +45,7 @@ export async function finishFunding(contestId, orderId) {
     const {ref, contest} = await loadContest(contestId);
 
     // already done with this exact order (such as retried request) then just return the contest.
-    if (contest.status == "open" && contest.paypalOrderId === orderId) return getContest(contestId);
+    if (contest.status === "open" && contest.paypalOrderId === orderId) return getContest(contestId);
     // if the contest's status is not a draft, that means it's already been funded (since it must be funded to move from draft status to open status).
     if (contest.status !== "draft") throw fail("This contest's prize pool is already funded.", 409);
     // prevents someone from reusing an orderId from a different, cheaper contest to fund the prize pool.
