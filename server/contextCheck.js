@@ -86,7 +86,7 @@ function fullSentence(words, pieceStart, pieceEnd) {
 // describes each traced piece for Gemini: where it plays, where it came from, the full sentence 
 // it was cut from, the talk around that, and whether it runs straight into the next piece 
 function describePieces(segments, episodes) {
-    const byId = new Map(episodes.map((ep) => [ep.id, ep]));
+    const byId = new Map(episodes.map((ep) => [ep.id, ep])); // episode ID (key) and episode object, including title, words, and timestamps.
     const pieces = segments.slice(0, MAX_PIECES);
 
     return pieces

@@ -31,7 +31,7 @@ export default function EpisodeUpload() {
         }
         if (chosen.size > MAX_BYTES) {
             setFile(null);
-            setMessage("The file is over 500 MB. Try a shorter episode.");
+            setMessage("The file is over 500 MB. Try a shorter episode or try compressing your file.");
             return;
         }
         setFile(chosen);
@@ -92,7 +92,8 @@ export default function EpisodeUpload() {
             }
         );
     }
-    const uploading = status === "uploading";
+    const uploading = status === "uploading"; // works out right side first; if status === uploading is true, then uploading itself is set to true.
+    
 
     return (
         <section className="panel">

@@ -55,7 +55,7 @@ export async function transcribeEpisode(episodeId, { force = false} = {}) {
             durationSec: result.durationSec,
             createdAt: FieldValue.serverTimestamp(),
         });
-        // if this is an updated episode, clear it's cached copy so searches load the new version.
+        // if this is an updated episode, delete it's cached copy so searches load the new version.
         // if this is just a new episode, it doesn't matter if this function is called either way...
         forgetTranscript(episodeId);
 
