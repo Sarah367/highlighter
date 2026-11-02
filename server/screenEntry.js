@@ -8,6 +8,8 @@ import { normalize } from "./searchTranscripts.js";
 import { findSources, longestContinuousPiece } from "./matchSources.js";
 import { getPublicContest } from "./contests.js";
 import { checkContext } from "./contextCheck.js";
+import { fileFingerprint, findDuplicates } from "./junkChecks.js";
+import {checkBrief} from "./briefCheck.js";
  
 const UNMATCHED_LIMIT = 0.3; // in "required" contests, flag entries where over 30% of the speech isn't from the episodes
 // 30% due to the fact that deepgram mishears words and is not completely accurate.
@@ -60,14 +62,20 @@ export async function screenEntry(entryId, {force = false} = {}) {
         if (!contest) throw fail("This entry's contest isn't available.", 404);
 
         // 1. transcribe the entry with deepgram, the same way as episodes are transcribed.
-        log("1/4 Transcribing with Deepgram...");
+        log("1/5 Transcribing with Deepgram...");
         const [signedUrl] = await bucket.file(entry.storagePath).getSignedUrl({
             version: "v4",
             action: "read",
             expires: Date.now() + 60 * 60 * 1000,
         });
         const result = await transcribeFromUrl(signedUrl);
-
+        // the file's fingerprint, for spotting exact same file submitted twice!
+        let fileHash = null;
+        try {
+            fileHash = await fileFingerprint(entry.storagePath);
+        } catch (err) {
+            log(`No fingerprint: ${err.message}`); // just skips the exact-duplicate check.
+        }
         const transcriptPath = `entry-transcripts/${entryId}.json`;
         await bucket.file(transcriptPath).save(JSON.stringify({text: result.text, words: result.words}), {
             contentType: "application/json",
@@ -75,7 +83,7 @@ export async function screenEntry(entryId, {force = false} = {}) {
         const flags = []; // each flag: {type, message}. the creator sees these and decides.
 
         // 2. the real length, measured by Deepgram. The browser's number could have been faked.
-        log("2/4 Checking the real length...");
+        log("2/5 Checking the real length...");
         const duration = result.durationSec;
         if (duration != null && (duration < contest.minLengthSec - 1 || duration > contest.maxLengthSec+1)) {
             flags.push({
@@ -83,7 +91,7 @@ export async function screenEntry(entryId, {force = false} = {}) {
                 message: `This entry is ${describeLength(duration)} long, but the contest allows ${describeLength(contest.minLengthSec)} to ${describeLength(contest.maxLengthSec)}.`,
             });
         }
-        log("3/4 Tracing pieces back to episodes...");
+        log("3/5 Tracing pieces back to episodes...");
         await setStep("tracing");
         let sources = null;
         const episodes = []; // eligible episodes' transcripts, also used by context check function 
@@ -116,7 +124,7 @@ export async function screenEntry(entryId, {force = false} = {}) {
         // gemini checks the traced pieces and contest brief, only when contest has it turned on and there are traced pieces to judge.
         let contextCheck = null;
         if (contest.fakeQuoteCheck && sources?.segments.length > 0) {
-            log("4/4 Asking Gemini for the context check...");
+            log("4/5 Asking Gemini for the context check...");
             await setStep("checking_context");
             try {
                 contextCheck = await checkContext({contest, segments: sources.segments, episodes, entryWords: result.words});
@@ -132,12 +140,50 @@ export async function screenEntry(entryId, {force = false} = {}) {
             }
         }
 
+        // final checks: duplicates (no AI needed) and whether entry fits the brief (small gemini call
+        // because gemini gets too overloaded if we try to make it answer if the entry follows the brief)
+        log("5/5 Checking for duplicates and the brief...");
+        await setStep("final_checks");
+        try {
+            const duplicateFlags = await findDuplicates({entryId, entry, fileHash, words: result.words, durationSec: duration});
+            for (const flag of duplicateFlags) {
+                flags.push(flag);
+            }
+        } catch (err) {
+            log(`Duplicate check skipped: ${err.message}`); // nice to have so it nevers fail screening entirely
+        }
+        let briefCheck = null;
+        if (result.words.length >= 10) { // too little speech to judge otherwise
+            try {
+                briefCheck = await checkBrief({contest, words: result.words});
+                // if there is enough in the transcript to judge AND then the entry doesn't fit the brief, we know its possibly a not a good entry
+                if (briefCheck.canTell && !briefCheck.fitsBrief) { 
+                    flags.push({type: "brief", risk: "medium", message: `May not fit the brief: ${briefCheck.reason}`});
+                }
+            } catch (err) {
+                briefCheck = {error: err.message};
+                // We set this alreadyUnchecked to false. If any of the previous checks up above already couldn't run,
+                // then we don't need another unchecked flag.
+                let alreadyUnchecked = false;
+                for (const flag of flags) {
+                    if (flag.type === "unchecked") alreadyUnchecked = true;
 
+                    
+                }
+                // if alreadyChecked is true, then don't run the code below!
+                // otherwise, alreadyChecked is false, meaning that this is the first time that we are getting an error
+                // (in this briefCheck step) and thus we return error message.
+                if (!alreadyUnchecked) {
+                    flags.push({type: "unchecked", message: `The brief check couldn't run (${err.message}). Re-screen this entry to try again.`})
+                }
+            }
+        }
         const status = flags.length > 0 ? "flagged" : "shortlisted";
         // a newer run started while this one was working: let that one save, not this one!
         if (!await stillLatest()) return {id: entryId, status: "superseded"};
         await entryRef.update({
             status,
+            fileHash, // saved so later entries can be compared
             screeningStep: FieldValue.delete(), // finished, no step to show.
             screening: {
                 durationSec: duration,
@@ -149,6 +195,7 @@ export async function screenEntry(entryId, {force = false} = {}) {
                 segments: sources?.segments.slice(0,300) ?? [], // capped, to stay well under Firestore's 1 MB limit
                 unmatchedRuns: sources?.unmatchedRuns.slice(0, 50) ?? [],
                 contextCheck, // gemini's verdict on whether the entry misrepresents the creator's speech, if it ran
+                briefCheck, // gemini's verdict on whether entry follows the creator's brief.
                 flags,
                 screenedAt: FieldValue.serverTimestamp(),
             },

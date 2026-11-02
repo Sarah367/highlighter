@@ -121,6 +121,7 @@ export async function createEntry(contestId, input) {
                 storagePath,
                 contentType,
                 sizeBytes,
+                fileHash: meta.md5Hash || null, // files fingerprint, saved right away so duplicates are caught when screening runs
                 durationSec: Number.isFinite(durationSec) ? durationSec : null,
                 status: "submitted", // screening moves it to "shortlisted" or "flagged"
                 createdAt: FieldValue.serverTimestamp(),
