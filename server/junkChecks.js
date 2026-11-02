@@ -65,7 +65,7 @@ function day(entry) {
     if (!entry.createdAt) return "earlier";
 
     const date = entry.createdAt.toDate(); // Firestore Timestamp --> normal JavaScript date
-    return date.toLocaleDateString("en-US", {month: "short", day: "numeric"});
+    return date.toLocaleDateString("en-US", {month: "short", day: "numeric", hour: "numeric", minute: "2-digit"});
 
 }
 
