@@ -1,0 +1,44 @@
+[
+  {
+    "name": "Fair compilation",
+    "entryId": "h9fh9gOaCMJBki0UXGJB",
+    "expectFlags": [],
+    "why": "Whole sentences of literally moments, in a new order: should pass"
+  },
+  {
+    "name": "Out of context: I hate my fans",
+    "entryId": "I6ShRwEsyMFM1elykBkc",
+    "expectFlags": ["context"],
+    "why": "Cuts 'Some people say' and 'but that's not true at all'"
+  },
+  {
+    "name": "Fake quote: never gonna love this community",
+    "entryId": "hv3MDN2egz6mHgbJ7FL4",
+    "expectFlags": ["context"],
+    "why": "Splices 'I'm never gonna' onto 'love this community'"
+  },
+  {
+    "name": "Fake quote that sounds like two sentences (crazy week); not convincing fake quote",
+    "entryId": "iRLaRRwwIaMYEz1SuQjN",
+    "expectFlags": [],
+    "why": "The voice audibly drops after 'the reason', so viewers hear two separate sentences; Deepgram's period reflects that. Not a convincing fake quote, so it should pass"
+  },
+  {
+    "name": "Unedited episode clip",
+    "entryId": "z0nut3CaQpTuMFSjoIrJ",
+    "expectFlags": ["unedited"],
+    "why": "One uncut stretch of an episode"
+  },
+  {
+    "name": "Same file submitted twice (second copy)",
+    "entryId": "k8tEFRFDc3jijaM924hf",
+    "expectFlags": ["duplicate"],
+    "why": "Identical fingerprint to an earlier entry"
+  },
+  {
+    "name": "Off-topic video",
+    "entryId": "42zavarb8fAP0jYGPm2C",
+    "expectFlags": ["brief", "source"],
+    "why": "New speech about something unrelated: off-brief, and not from the episodes"
+  }
+]

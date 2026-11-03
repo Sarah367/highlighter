@@ -36,26 +36,29 @@ function transcriptText(words) {
 }
 
 
-// generous to fans on purpose; its judging relevance only, not quality or taste (those come from the creator who judges the videos)
-// and only marks an entry off-brief when its clearly about something else.
-// when transcript can't show it (most visual edits and not a lot of talking) then the fan gets the benefit of the doubt!
+// generous to fans on purpose: it judges the SUBJECT only. format, editing, and honesty belong to other checks,
+// and a transcript can't show where the cuts are anyway (removed contest type)
 function buildPrompt(contest, words) {
     return `You are helping a creator review fan entries for a contest on Highlighter.
-Decide whether this entry is a genuine attempt at what the contest's brief asks for.
- 
+Decide whether this entry's subject matches what the contest's brief asks for.
+
 Contest title: "${contest.title}"
-Contest type: ${contest.preset}
 The brief, in the creator's words: "${contest.brief}"
- 
-You only have the entry's transcript (what is said in it), not its visuals or music.
- 
-Step 1. whatTheEntryIs: in one sentence, describe what the entry seems to be, based on the transcript.
+
+You only have the entry's transcript (what is said in it), not its visuals, music, or edits.
+
+Step 1. whatTheEntryIs: in one sentence, describe what the entry is about, based on the transcript.
 Step 2. canTell: false if the transcript doesn't give you enough to judge, for example a music video, a mostly
 visual edit, or very little speech. When you can't tell, the entry gets the benefit of the doubt.
-Step 3. fitsBrief: true if the entry is a genuine attempt at the brief, even a loose, creative, or low-quality one.
-Judge relevance only, not quality or taste. Only mark it false when the entry is clearly about something else.
+Step 3. fitsBrief: true if the entry's subject matches what the brief asks for, even loosely or creatively.
+Judge the SUBJECT only. Do NOT judge:
+- the format or editing: whether it's a compilation, how many cuts it has, or whether it looks like one
+  uncut clip. A transcript doesn't show where the cuts are, and another check handles editing.
+- honesty: whether the entry misrepresents the creator. Another check handles that.
+- quality or taste.
+Only mark it false when the entry is clearly about something else entirely.
 Step 4. reason: one or two sentences explaining your decision, referring to the brief.
- 
+
 The entry's transcript:
 "${transcriptText(words)}"`;
 }
