@@ -157,3 +157,22 @@ export async function decideEntry(entryId, decision) {
     return {id: entryId, creatorDecision: decision};
 }
 
+// creator's decision on many entries at once: bulk shortlist, reject, or undo (null)
+// every entry must belong to this contest. Firestore saves at most 500 changes in one batch,
+// so big selections are checked and saved in chunks
+export async function decideEntries(contestId, entryIds, decision) {
+    if (decision !== null && decision !== "shortlist" && decision !== "reject") {
+        throw fail("The decision must be shortlist, reject, or null.", 400);
+    }
+
+    if (!Array.isArray(entryIds) || entryIds.length === 0) throw fail("Select at least one entry.", 400);
+    if (entryIds.length > 5000) throw fail("That's too many entries at once. Try a smaller selection.", 400);
+
+
+    const refs = [];
+    for (const id of entryIds) {
+        refs.push(db.collection("entries").doc(String(id)));
+    }
+
+    const CHUNK = 400; 
+}
