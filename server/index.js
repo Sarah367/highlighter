@@ -7,7 +7,8 @@ import { PRESETS, createContest, listContests, getContest, getPublicContest } fr
 import { startFunding, finishFunding } from "./contestFunding.js";
 import { checkCanEnter, createEntry } from "./entries.js";
 import { screenEntry, listEntries } from "./screenEntry.js";
-import { decideEntry } from "./entries.js";
+import {decideEntry, decideEntries} from "./entries.js";
+import {closeContest, winnerOptions, pickWinners} from "./winners.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -205,6 +206,43 @@ app.post("/api/entries/:id/decision", async (req,res) => {
         res.json(await decideEntry(req.params.id, req.body.decision ?? null));
     } catch (err) {
         sendError(res,err);
+    }
+});
+
+// bulk decision: {"entryIds": [...], "decision": "shortlist" | "reject" | null}
+app.post("/api/contests/:id/decisions", async (req,res) => {
+    try {
+        res.json(await decideEntries(req.params.id, req.body.entryIds, req.body.decision ?? null));
+
+    } catch (err) {
+        sendError(res, err);
+    }
+});
+
+// "End contest now" : no more entries, and winners can be picked.
+app.post("/api/contests/:id/close", async (req, res) => {
+    try {
+        res.json(await closeContest(req.params.id));
+    } catch (err) {
+        sendError(res, err);
+    }
+});
+
+// who can win, how many winners are needed, and anything that has to happen first.
+app.get("/api/contests/:id/winner-options", async(req, res) => {
+    try {
+        res.json(await winnerOptions(req.params.id));
+    } catch (err) {
+        sendError(res, err);
+    }
+});
+
+// saves the winners: {"entryIds": [1st place, 2nd place, ...]}
+app.post("/api/contests/:id/winners", async (req, res) => {
+    try {
+        res.json(await pickWinners(req.params.id, req.body.entryIds));
+    } catch (err) {
+        sendError(res, err);
     }
 });
 

@@ -773,3 +773,65 @@ select:focus {
   max-width: 480px;
   margin-bottom: 8px;
 }
+
+/* ---------- Picking winners ---------- */
+
+.winner-row {
+  display: grid;
+  grid-template-columns: minmax(130px, 180px) 1fr;
+  gap: 12px;
+  align-items: center;
+}
+.winner-place {
+  font-weight: 600;
+}
+@media (max-width: 560px) {
+  .winner-row { grid-template-columns: 1fr; gap: 6px; }
+}
+
+/* ---------- Bulk review ---------- */
+
+.entry-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.entry-select {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 3px;
+  accent-color: var(--ink);
+}
+.group-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin-bottom: 10px;
+}
+.entry-group .group-head h3 {
+  margin: 0;
+}
+.group-actions {
+  display: flex;
+  gap: 4px;
+}
+/* stays at the bottom of the screen while scrolling through entries */
+.bulk-bar {
+  position: sticky;
+  bottom: 16px;
+  z-index: 5;
+  margin-top: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px 10px 18px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}

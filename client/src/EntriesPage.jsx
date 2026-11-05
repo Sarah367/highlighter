@@ -1,5 +1,6 @@
-import {useEffect, useState} from "react";
+import {useCallback, useEffect, useState} from "react";
 import EntryReview from "./EntryReview";
+import WinnerPicker from "./WinnerPicker";
 import { API_URL } from "./api";
 
 // entries tab: pick a contest, then review its entries
@@ -8,6 +9,10 @@ import { API_URL } from "./api";
 export default function EntriesPage({contestId, onChangeContest}) {
     const [contests, setContests]= useState(null);
     const [problem, setProblem] = useState("");
+    // goes up whenever entries change (a review decision, or screening finishing)
+    // so winner picker reloads who can win!
+    const [version, setVersion] = useState(0);
+    const entriesChanged = useCallback(() => setVersion((v) => v+1), []);
 
     // only funded contests can have entries, so drafts are left out of the list.
 
@@ -26,7 +31,13 @@ export default function EntriesPage({contestId, onChangeContest}) {
         if (!contestId && contests?.length > 0) onChangeContest(contests[0].id);
 
     }, [contestId, contests, onChangeContest]);
-
+    // contest currently picked in the dropdown
+    let selected = null;
+    if (contests) {
+        for (const c of contests) {
+            if (c.id === contestId) selected = c;
+        }
+    }
     return (
         <>
             <div className="page-head">
@@ -54,7 +65,11 @@ export default function EntriesPage({contestId, onChangeContest}) {
                     </label>
 
                     {/*key={contestId} gives each contest a fresh review screen, so switching never mixes up their entries.*/}
-                    {contestId && <EntryReview key={contestId} contestId={contestId}/>}
+                    {/* closed contests (ended early, or past the deadline): pick winners above the entries. */}
+                    {selected && selected.closed && selected.status !== "paid" && (
+                        <WinnerPicker key={contestId} contestId={contestId} version={version} />
+                    )}
+                    {contestId && <EntryReview key={contestId} contestId={contestId} onChange={entriesChanged}/>}
                 </>
             )}
         </>

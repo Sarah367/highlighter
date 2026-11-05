@@ -138,6 +138,13 @@ export async function createContest(input) {
     return { id: ref.id, ...contest, status: "draft"};
 }
 
+// true when a contest takes no more entries: the creator ended it, or its deadline passed
+function isClosed(data) {
+    if (data.status === "closed" || data.status === "paid") return true;
+    if (data.status === "open" && data.deadline && data.deadline.toDate() <= new Date()) return true;
+    return false;
+}
+
 // Firestore stores dates as Timestamps; turn them into normal text dates that can translate cleanly to JSON.
 function toJson(doc) {
     const data = doc.data();
@@ -147,6 +154,9 @@ function toJson(doc) {
         deadline: data.deadline?.toDate().toISOString() ?? null,
         createdAt: data.createdAt?.toDate().toISOString() ?? null,
         fundedAt: data.fundedAt?.toDate().toISOString() ?? null,
+        closedAt: data.closedAt?.toDate().toISOString() ?? null,
+        // closed = no more entries : ended early by the creator, or open but past its deadline
+        closed: isClosed(data),
     };
 }
 
