@@ -78,6 +78,7 @@ export async function winnerOptions(contestId) {
             // genuine entry to avoid paying (and thus steal their fan's content/creativity)
             rejected: entry.creatorDecision === "reject", 
         });
+    }
 
         // entries the creator didn't reject come first in the list, so they're the obvious choice
         candidates.sort((a,b) => Number(a.rejected) - Number(b.rejected));
@@ -101,7 +102,7 @@ export async function winnerOptions(contestId) {
             winners: contest.winners || null,
         };
     }
-}
+
 
 // saves the winners , in place order: entryIds[0] wins 1st place, entryIds[1] wins 2nd, entryIds[2] wins 3rd
 export async function pickWinners(contestId, entryIds) {

@@ -123,8 +123,9 @@ export default function WinnerPicker({contestId, version}) {
             )}
             {options.needsReview > 0 && (
                 <p className="notice">
-                    First, review the {options.needsReview === 1 ? "flagged entry" : `${options.needsReview} flagged entries`} below: shortlist or reject each one.
-
+                    {options.needsReview === 1
+                        ? "First, review the flagged entry below: shortlist or reject it."
+                        : `First, review the ${options.needsReview} flagged entries below: shortlist or reject each one.`}
                 </p>
             )}
             {options.winnersNeeded === 0 ? (

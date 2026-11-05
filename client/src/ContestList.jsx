@@ -30,7 +30,6 @@ export default function ContestList({presets, refreshKey, onOpen}) {
 
 
     // one card per contest.
-
     return (
         <section className="block">
           <h2>Your contests</h2>
@@ -40,20 +39,24 @@ export default function ContestList({presets, refreshKey, onOpen}) {
      
           {contests?.length > 0 && (
             <ul className="rows">
-              {contests.map((c) => (
-                <li key={c.id} className="row">
-                  <div className="row-main">
-                    <span className="row-title">{c.title}</span>
-                    <div className="meta">
-                      <span className={`status status-${c.status}`}>{STATUS_LABELS[c.status] ?? c.status}</span>
-                      <span>{presets[c.preset]?.label ?? "Custom"}</span>
-                      <span>{formatMoney(c.prizeTotalCents)} in prizes</span>
-                      <span>Ends {new Date(c.deadline).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</span>
+              {contests.map((c) => {
+                // an open contest past its deadline shows as closed, even before anything updates it in the database.
+                const statusKey = c.closed && c.status === "open" ? "closed" : c.status;
+                return (
+                  <li key={c.id} className="row">
+                    <div className="row-main">
+                      <span className="row-title">{c.title}</span>
+                      <div className="meta">
+                        <span className={`status status-${statusKey}`}>{STATUS_LABELS[statusKey] ?? statusKey}</span>
+                        <span>{presets[c.preset]?.label ?? "Custom"}</span>
+                        <span>{formatMoney(c.prizeTotalCents)} in prizes</span>
+                        <span>Ends {new Date(c.deadline).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</span>
+                      </div>
                     </div>
-                  </div>
-                  <button onClick={() => onOpen(c.id)}>Open</button>
-                </li>
-              ))}
+                    <button onClick={() => onOpen(c.id)}>Open</button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>
