@@ -40,6 +40,7 @@ export default function ContestView({contestId, presets, onBack, onReviewEntries
     const [contest, setContest] = useState(null);
     const [problem, setProblem] = useState("");
     const [copied, setCopied] = useState(false);
+    const [ending, setEnding] = useState(false); // true while "End contest now" is saving
     // called by paypal button once payment is captured. server will send back the updated contest.
     // useCallback keeps it the same function so paypal button doesn't have to be set up again. 
     const handleFunded = useCallback((updated) => setContest(updated), []); 
@@ -72,6 +73,28 @@ export default function ContestView({contestId, presets, onBack, onReviewEntries
 
     const deadline = new Date(contest.deadline).toLocaleString([], {dateStyle: "full", timeStyle: "short"});
 
+    // an open contest past its deadline will show as closed (calculated by the isClosed() function)
+    // if the contest is closed but the database still shows open, show "Closed" instead. Otherwise, show whatever database says
+    const statusKey = contest.closed && contest.status === "open" ? "closed" : contest.status;
+
+    // "end contest now" : asks first, since fans cant enter after this
+    async function endContest() {
+        const sure = window.confirm("End this contest now? Fans won't be able to enter anymore, and you'll be able to pick the winners.");
+        if (!sure) return;
+
+        setEnding(true);
+        try {
+            const res = await fetch(`${API_URL}/api/contests/${contest.id}/close`, {method: "POST"});
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+            setContest(data);
+        } catch (err) {
+            setProblem(err.message);
+        } finally {
+            setEnding(false);
+        }
+    }
+
     return (
         <section>
             <button className="btn-quiet" onClick={onBack}>
@@ -81,6 +104,7 @@ export default function ContestView({contestId, presets, onBack, onReviewEntries
             <div className="page-head" style={{marginTop: 8}}>
                 <h1>{contest.title}</h1>
                 <div className="meta" style={{marginTop: 10}}>
+                    <span className={`status status-${statusKey}`}>{STATUS_LABELS[statusKey] ?? statusKey}</span>
                     <span className={`status status-${contest.status}`}>{STATUS_LABELS[contest.status] ?? contest.status}</span>
                     <span>{presets[contest.preset]?.label ?? "Custom"}</span>
                     <span>
@@ -101,7 +125,9 @@ export default function ContestView({contestId, presets, onBack, onReviewEntries
                     </div>
                 </section>
             )}
-            {contest.status === "open" && (
+            {problem && <p className="alert">{problem}</p>}
+            
+            {contest.status === "open" && !contest.closed && ( // prize pools only show when the contest is actually open
                 <section className="panel">
                 <h2>Prize pool funded</h2>
                 <div className="stack">
@@ -118,8 +144,43 @@ export default function ContestView({contestId, presets, onBack, onReviewEntries
                         {copied ? "Copied" : "Copy link"}
                         </button>
                     </div>
+                    
+                    </div>
+                    <div className="actions">
+                        <button onClick={endContest} disabled={ending}>
+                            {ending ? "Ending..." : "End contest now"}
+                        </button>
+                        <span className="hint">Stops new entries early, so you can pick winners.</span>
                     </div>
                 </div>
+                </section>
+            )}
+            {/*closed contests: next step is picking winners, then paying them after*/}
+            {contest.closed && contest.status !== "paid" && (
+                <section className="panel">
+                    <h2>{contest.winners ? "Winners picked" : "Contest closed"}</h2>
+                    {!contest.winners && <p>No more entries can come in. Next, pick your winners on the Entries tab.</p>}
+                    {contest.winners && contest.winners.length > 0 && (
+                        <ul className="rows">
+                            {contest.winners.map((w) => (
+                                <li key={w.place} className="row">
+                                    <span className="row-main">{placeLabel(w.place)} place: {w.title}, by {w.fanName}</span>
+                                    <span>{formatMoney(w.prizeCents)}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                    {contest.winners && contest.winners.length === 0 && (
+                        <p>No entries were in good standing, so no prizes were awarded.</p>
+                    )}
+                    {contest.winners && contest.unusedCents > 0 && (
+                        <p className="hint">{formatMoney(contest.unusedCents)} in unused prizes will be refunded to you when winners are paid.</p>
+                    )}
+                    <div className="actions">
+                        <button className="btn-primary" onClick={() => onReviewEntries(contest.id)}>
+                            {contest.winners ? "Change winners" : "Pick winners"}
+                        </button>
+                    </div>
                 </section>
             )}
             {/* open contests: how many entries so far, and a button to the Entries tab to review them */}

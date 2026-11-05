@@ -59,8 +59,8 @@ function StepIndicator({entry}) {
     );
 
 }
-
-function EntryCard({entry, onDecide, onRescreen}) {
+// selected / onToggle: whether the card is ticked for a bulk action (and how to tick or untick it)
+function EntryCard({entry, onDecide, onRescreen, selected, onToggle}) {
     const [videoUrl, setVideoUrl] = useState("");
     const [busy, setBusy] = useState(false);
     const screening = entry.screening;
@@ -87,6 +87,16 @@ function EntryCard({entry, onDecide, onRescreen}) {
     return (
         <li className="entry-card">
             <div className = "entry-head">
+                {/* entries still being screened (or that failed) can't be decided yet, so they get no checkbox. */}
+                {group !== "screening" && group !== "error" && (
+                    <input
+                        type="checkbox"
+                        className="entry-select"
+                        checked={selected}
+                        onChange={onToggle}
+                        aria-label={`Select ${entry.title || `entry by ${entry.fanName}`}`}
+                    />
+                )}
                 <div className="row-main">
                     <span className="row-title">{entry.title || `Entry by ${entry.fanName}`}</span>
                     <div className="meta">
@@ -164,10 +174,32 @@ function EntryCard({entry, onDecide, onRescreen}) {
     );
 }
 
+// true when screening gave the entry at least one real flag ("Not checked" doesn't count)
+function isFlagged(entry) {
+    if (!entry.screening || !entry.screening.flags) return false;
+    for (const flag of entry.screening.flags) {
+        if (flag.type !== "unchecked") return true;
+    }
+    return false;
+}
+
+// true when the entry has at least one high-risk flag, like an exact duplicate or clear fake quote
+function isHighRisk(entry) {
+    if (!entry.screening || !entry.screening.flags) return false;
+    for (const flag of entry.screening.flags) {
+        if (flag.risk === "high") return true;
+    }
+    return false;
+}
+
+
 // creator's review screen for one contest's entries.
-export default function EntryReview({contestId}) {
+// onChange: called whenever the entries reload, so other parts of the page (like winner picker) can update properly
+export default function EntryReview({contestId, onChange}) {
     const [entries, setEntries] = useState(null); // null = still loading
     const [problem, setProblem] = useState("");
+    const [selected, setSelected] = useState([]); // IDs of the entries ticked for a bulk action
+    const [bulkSaving, setBulkSaving] = useState(false);
 
     // useCallback keeps it same function between redraws so it doesnt restart every time
     const load = useCallback(async () => { 
@@ -177,10 +209,11 @@ export default function EntryReview({contestId}) {
             if (!res.ok) throw new Error(data.error);
             setEntries(data);
             setProblem("");
+            if (onChange) onChange(); // let rest of page know the entries changed.
         } catch (err) {
             setProblem(err.message);
         }
-    }, [contestId]);
+    }, [contestId, onChange]);
 
     useEffect(() => { 
         load();
@@ -205,6 +238,77 @@ export default function EntryReview({contestId}) {
         await load(); // refresh, so entry moves to its new group depending on the decision the creator made (shortlisted or rejected)
     }
 
+    // ticks or unticks one entry.
+    function toggle(entryId) {
+        if (selected.includes(entryId)) { // is this entry already ticked? 
+            // filter makes new list keeping all items except entry ID 
+            setSelected(selected.filter((id) => id !== entryId)); // if its ticked, then untick it
+        } else {
+            // the spread (...) copies every item from selected, and entry ID is added at the end. 
+            setSelected([...selected, entryId]); // otherwise if its NOT ticked, then tick it
+        }
+    }
+
+    // SELECT ALL : ticks every entry in a list (or unticks them all, if they're all ticked)
+    function selectAll(list) {
+        let allTicked = true; // start by assuming each entry is ticked.
+        for (const entry of list) {
+            if (!selected.includes(entry.id)) allTicked = false; // if one entry is not ticked, allTicked becomes false.
+
+        }
+        const ids = [];
+        for (const entry of list) ids.push(entry.id); // makes a list of just this group's IDs
+
+        if (allTicked) { // if they're already all ticked, then untick them!
+            setSelected(selected.filter((id) => !ids.includes(id)));
+        } else { // otherwise, tick the whole group.
+            const next = [...selected]; // copy into a new list
+            for (const id of ids) {
+                if (!next.includes(id)) next.push(id);
+            }
+            setSelected(next); // saves the new list
+        }
+
+
+
+    }
+
+    // shortlists or rejects every ticked entry at once
+    async function decideSelected(decision) {
+        // rejecting flagged entries disqualifies them, so say so before doing it
+        if (decision === "reject") {
+            let flaggedCount = 0;
+            for (const entry of entries) {
+                if (selected.includes(entry.id) && isFlagged(entry)) flaggedCount++;
+            }
+            const message = 
+                `Reject ${selected.length} ${selected.length === 1 ? "entry" : "entries"}` +
+                (flaggedCount > 0
+                    ? ` ${flaggedCount} of them ${flaggedCount === 1 ? "was" : "were"} flagged by screening, so ${flaggedCount === 1 ? "it" : "they"} will be disqualified and won't count toward the prizes you owe.`
+                    : "") +
+                " You can undo this until winners are paid.";
+            if (!window.confirm(message)) return;   // if they dont confirm the message then just return.
+        }
+        setBulkSaving(true);
+
+        try {
+            // goes to the bulk route in index.js , which calls decideEntries in entries.js and actually updates the entry's status in Firestore
+            const res = await fetch(`${API_URL}/api/contests/${contestId}/decisions`, {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({entryIds: selected, decision}), // sends ticket IDs plus the decision (reject or shortlist)
+            });
+            if (!res.ok) setProblem((await res.json()).error);
+            setSelected([]); // untick everything now
+            await load(); // reload entries
+        } catch {
+          setProblem(`Couldn't save: ${err.message}`);  
+        } finally {
+            setBulkSaving(false);
+        }
+    }
+
+
     async function rescreen(entryId) {
         // screening takes a while, so dont wait for it; show as in progress and let polling follow along.
         fetch(`${API_URL}/api/entries/${entryId}/screen?force=true`, {method: "POST"}).catch(() => {});
@@ -224,21 +328,53 @@ export default function EntryReview({contestId}) {
                     if (list.length === 0 && !group.empty) return null;
                     return (
                         <div key={group.key} className="entry-group">
+                        <div className="group-head">
                             <h3>
                                 {group.title} <span className="muted">({list.length})</span>
                             </h3>
+                            {/* quick selection, for groups whose entries can be decided */}
+                            {list.length > 0 && group.key !== "screening" && group.key !== "error" && (
+                                <div className="group-actions">
+                                    <button className="btn-quiet" onClick={() => selectAll(list)}>Select all</button>
+                                    {group.key === "review" && (
+                                        <button className="btn-quiet" onClick={() => selectAll(list.filter(isHighRisk))}>
+                                            Select high risk only
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
                             {list.length === 0 ? (
                                 <p className="hint">{group.empty}</p>
                             ) : (
                                 <ul className="entry-list">
                                     {list.map((entry) => (
-                                        <EntryCard key = {entry.id} entry={entry} onDecide={decide} onRescreen={rescreen}/>
+                                        <EntryCard
+                                            key={entry.id}
+                                            entry={entry}
+                                            onDecide={decide}
+                                            onRescreen={rescreen}
+                                            selected={selected.includes(entry.id)}
+                                            onToggle={() => toggle(entry.id)}
+                                        />                                    
                                     ))}
                                 </ul>
                             )}
                         </div>
                     );
                 })}
+                {/* the bulk bar: shows whenever anything is ticked, and stays at the bottom of the screen. */}
+                {selected.length > 0 && (
+                    <div className="bulk-bar" role="region" aria-label="Bulk actions">
+                        <span><strong>{selected.length}</strong> selected</span>
+                        <div className="actions">
+                            <button className="btn-primary" disabled={bulkSaving} onClick={() => decideSelected("shortlist")}>Shortlist</button>
+                            <button disabled={bulkSaving} onClick={() => decideSelected("reject")}>Reject</button>
+                            <button className="btn-quiet" disabled={bulkSaving} onClick={() => setSelected([])}>Clear</button>
+                        </div>
+                    </div>
+                )}
         </section>
     );
 }

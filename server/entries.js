@@ -170,9 +170,35 @@ export async function decideEntries(contestId, entryIds, decision) {
 
 
     const refs = [];
-    for (const id of entryIds) {
+    for (const id of entryIds) { // push all entries that were selected.
         refs.push(db.collection("entries").doc(String(id)));
     }
 
-    const CHUNK = 400; 
+    const CHUNK = 400;  // safely under Firestore's 500 change limit
+
+    // first, check every entry exists and belongs to this contest, before changing anything
+    for (let i = 0; i < refs.length; i+= CHUNK) {
+        // db.getAll() loads many entries in one request, ... spreads the list of references into separate args
+        const snaps = await db.getAll(...refs.slice(i, i + CHUNK));
+        for (const snap of snaps) {
+            if (!snap.exists || snap.data().contestId !== contestId) {
+                throw fail("Every selected entry must belong to this contest.", 400);
+            }
+        }
+    }
+
+    // now after checking that every entry is valid, we actually
+    // save the decision on all of them, one chunk at a time.
+    for (let i = 0; i < refs.length; i += CHUNK) {
+        const batch = db.batch();
+        for (const ref of refs.slice(i, i+CHUNK)) {
+            batch.update(ref, {
+                creatorDecision: decision,
+                decidedAt: decision ? FieldValue.serverTimestamp() : null,
+            });
+        }
+        await batch.commit();
+    }
+    return { updated: refs.length, creatorDecision: decision };
 }
+
