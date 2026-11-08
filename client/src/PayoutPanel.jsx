@@ -92,7 +92,11 @@ export default function PayoutPanel({contest, onChange}) {
                                         {placeLabel(w.place)} place: {w.title}, by {w.fanName}
                                     </span>
                                     <span>{formatMoney(w.prizeCents)}</span>
-                                    <span className={badgeClass(status)}>{PAYMENT_LABELS[status] || status}</span>
+                                    <span className="payment-status">
+                                        {/* a spinner while paypal is still working on this payment */}
+                                        {waiting && status === "PENDING" && <span className="spinner" aria-hidden="true"></span>}
+                                        <span className={badgeClass(status)}>{PAYMENT_LABELS[status] || status}</span>
+                                    </span>
                                 </li>
                             );
                         })}

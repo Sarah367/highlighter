@@ -51,7 +51,7 @@ export async function payWinners(contestId) {
             if (winner.prizeCents !== contest.prizesCents[winner.place-1]) {
                 throw fail(`The ${placeLabel(winner.place)} place prize doesn't match the contest's prizes.`, 409);
             }
-            winnerCents += winner.prizeCents;
+            winnersCents += winner.prizeCents;
 
         }
 
@@ -69,7 +69,7 @@ export async function payWinners(contestId) {
             items.push({
                 recipient_type: "EMAIL",
                 receiver: entrySnap.data().paypalEmail,
-                amount: {value: centsToValue(winner.prizesCents), currency: "USD"},
+                amount: {value: centsToValue(winner.prizeCents), currency: "USD"},
                 sender_item_id: `${contestId}-place-${winner.place}`, // lets us match PayPal's results to places
                 note: `${placeLabel(winner.place)} place in "${contest.title}" on Highlighter. Congratulations!`,
             });

@@ -842,3 +842,26 @@ select:focus {
 .panel .rows .row .status {
   flex: none;
 }
+
+/* a badge and its spinner, side by side */
+.payment-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+/* a small ring with one darker side, spinning: the classic loading spinner */
+.spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid rgba(107, 82, 0, 0.25);
+  border-top-color: #6b5200;
+  animation: spin 0.8s linear infinite;
+  vertical-align: middle;
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation-duration: 2.4s; } /* slower for anyone who prefers less motion */
+}
