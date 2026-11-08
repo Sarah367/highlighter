@@ -25,11 +25,12 @@ export function centsToValue(cents) {
 }
 
 // one helper for every paypal call
+// method: "POST" (the default) to do something, or "GET" to look something up.
 // adds the token, sends the json body, and turns any failures into readable errors
-async function paypalRequest(path, {body, requestId} = {}) {
+async function paypalRequest(path, {method = "POST", body, requestId} = {}) {
     const token = await getAccessToken();
     const res = await fetch(`${BASE}${path}`, {
-        method: "POST",
+        method,
         headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
@@ -37,7 +38,7 @@ async function paypalRequest(path, {body, requestId} = {}) {
             ...(requestId ? { "PayPal-Request-Id": requestId} : {}),
             // same ID on a retry = payapl does the action only once (idempotency key)
         },
-        body: JSON.stringify(body ?? {}),
+        body: method === "GET" ? undefined : JSON.stringify(body ?? {}), 
     });
     const data = await res.json();
     if (!res.ok) {
@@ -68,5 +69,37 @@ export function createOrder({amountCents, referenceId, description}) {
 // captures an approved order, moment the money actually moves and request is sent out
 export function captureOrder(orderId) {
     return paypalRequest(`/v2/checkout/orders/${orderId}/capture`, {requestId: `capture-${orderId}`});
+}
+
+// pays several people at once, by email, in one PayPal "batch payout"
+// senderBatchId labels the batch: PayPal refuses a second batch with same label which naturally prevents double charges
+export function createPayoutBatch({senderBatchId, items, subject, message}) {
+    return paypalRequest("/v1/payments/payouts", {
+        body: {
+            sender_batch_header: {
+                sender_batch_id: senderBatchId,
+                email_subject: subject,
+                email_message: message,
+            }, 
+            items,
+        },
+    });
+}
+
+// looks up a payout batch: its overall status, and each person's payment status.
+export function getPayoutBatch(batchId) {
+    return paypalRequest(`/v1/payments/payouts/${batchId}`, {method: "GET"});
+}
+
+// refunds part (or all) of a captured payment, like a contest's prize pool.
+// requestId makes it safe to retry: same ID returns same refund receipt
+export function refundCapture({captureId, amountCents, requestId, note}) {
+    return paypalRequest(`/v2/payments/captures/${captureId}/refund`, {
+        requestId,
+        body: {
+            amount: {currency_code: "USD", value: centsToValue(amountCents)},
+            note_to_payer: note,
+        },
+    });
 }
 

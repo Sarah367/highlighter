@@ -9,6 +9,7 @@ import { checkCanEnter, createEntry } from "./entries.js";
 import { screenEntry, listEntries } from "./screenEntry.js";
 import {decideEntry, decideEntries} from "./entries.js";
 import {closeContest, winnerOptions, pickWinners} from "./winners.js";
+import {payWinners, checkPayout} from "./payouts.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -250,4 +251,22 @@ app.post("/api/contests/:id/winners", async (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`Server listening on http://localhost:${PORT}`);
+});
+
+// "Pay winners" : refunds unused prizes, then pays every winner in one PayPal batch
+app.post("/api/contests/:id/pay", async (req, res) => {
+    try {
+        res.json(await payWinners(req.params.id));
+    } catch (err) {
+        sendError(res, err);
+    }
+});
+
+// asks PayPal how the payout is going, and updates each winner's payment status
+app.post("/api/contests/:id/payout-status", async(req,res) => {
+    try {
+        res.json(await checkPayout(req.params.id));
+    } catch(err) {
+        sendError(res,err);
+    }
 });

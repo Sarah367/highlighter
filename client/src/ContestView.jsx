@@ -2,11 +2,12 @@ import {useEffect, useCallback, useState} from "react";
 import { API_URL } from "./api";
 import {formatMoney} from "./format";
 import FundContest from "./FundContest";
-
+import PayoutPanel from "./PayoutPanel";
 const STATUS_LABELS = {
     draft: "Draft",
     open: "Open for entries",
     closed: "Closed",
+    paying: "Paying winners", 
     paid: "Winners paid",
 };
 
@@ -41,6 +42,7 @@ export default function ContestView({contestId, presets, onBack, onReviewEntries
     const [problem, setProblem] = useState("");
     const [copied, setCopied] = useState(false);
     const [ending, setEnding] = useState(false); // true while "End contest now" is saving
+    const [paying, setPaying] = useState(false); // true while "Pay winners" is sending payout
     // called by paypal button once payment is captured. server will send back the updated contest.
     // useCallback keeps it the same function so paypal button doesn't have to be set up again. 
     const handleFunded = useCallback((updated) => setContest(updated), []); 

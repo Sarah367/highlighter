@@ -111,6 +111,9 @@ export async function pickWinners(contestId, entryIds) {
     }
 
     const options = await winnerOptions(contestId);
+    if (options.status === "paying" || options.status === "paid") {
+        throw fail("This contest's winners are already being paid, so they can't be changed.", 409);
+    }
     if (options.status === "paid") {
         throw fail("This contest's winners have already been paid!", 409);
     }

@@ -835,3 +835,10 @@ select:focus {
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
+
+/* ---------- Paying winners ---------- */
+ 
+/* a winner's row: place and entry, prize, then the payment's status badge */
+.panel .rows .row .status {
+  flex: none;
+}
