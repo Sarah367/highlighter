@@ -66,7 +66,7 @@ export default function EntriesPage({contestId, onChangeContest}) {
 
                     {/*key={contestId} gives each contest a fresh review screen, so switching never mixes up their entries.*/}
                     {/* closed contests (ended early, or past the deadline): pick winners above the entries. */}
-                    {selected && selected.closed && selected.status !== "paid" && (
+                    {selected && selected.closed && selected.status === "closed" && (
                         <WinnerPicker key={contestId} contestId={contestId} version={version} />
                     )}
                     {contestId && <EntryReview key={contestId} contestId={contestId} onChange={entriesChanged}/>}

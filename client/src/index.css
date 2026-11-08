@@ -835,3 +835,33 @@ select:focus {
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
+
+/* ---------- Paying winners ---------- */
+ 
+/* a winner's row: place and entry, prize, then the payment's status badge */
+.panel .rows .row .status {
+  flex: none;
+}
+
+/* a badge and its spinner, side by side */
+.payment-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+/* a small ring with one darker side, spinning: the classic loading spinner */
+.spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid rgba(107, 82, 0, 0.25);
+  border-top-color: #6b5200;
+  animation: spin 0.8s linear infinite;
+  vertical-align: middle;
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation-duration: 2.4s; } /* slower for anyone who prefers less motion */
+}

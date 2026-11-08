@@ -140,7 +140,7 @@ export async function createContest(input) {
 
 // true when a contest takes no more entries: the creator ended it, or its deadline passed
 function isClosed(data) {
-    if (data.status === "closed" || data.status === "paid") return true;
+    if (data.status === "closed" || data.status === "paying" || data.status === "paid") return true;
     if (data.status === "open" && data.deadline && data.deadline.toDate() <= new Date()) return true;
     return false;
 }
@@ -155,6 +155,8 @@ function toJson(doc) {
         createdAt: data.createdAt?.toDate().toISOString() ?? null,
         fundedAt: data.fundedAt?.toDate().toISOString() ?? null,
         closedAt: data.closedAt?.toDate().toISOString() ?? null,
+        winnersPickedAt: data.winnersPickedAt?.toDate().toISOString() ?? null,
+        paidAt: data.paidAt?.toDate().toISOString() ?? null,
         // closed = no more entries : ended early by the creator, or open but past its deadline
         closed: isClosed(data),
     };
