@@ -86,6 +86,7 @@ export async function payWinners(contestId) {
                 note: `Unused prizes from "${contest.title}" on Highlighter.`,
             });
             refund = {id: result.id, status: result.status, amountCents: refundCents};
+            await contestRef.update({refund}); // save refund as soon as its done.
         }
 
         // pay every winner LAST, in one batch, labeled with contest's ID.

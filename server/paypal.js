@@ -42,7 +42,15 @@ async function paypalRequest(path, {method = "POST", body, requestId} = {}) {
     });
     const data = await res.json();
     if (!res.ok) {
-        const err = new Error(`PayPal request failed (${res.status}): ${data.message || data.name || "unknown error"}`);
+        // PayPal's message, plus its first specific problem if it gave one, like which field was wrong.
+        let reason = data.message || data.name || "unknown error";
+        if (data.details && data.details.length > 0) {
+            const first = data.details[0];
+            let detail = first.issue || first.description || "";
+            if (first.field) detail = `${first.field}: ${detail}`;
+            reason += ` (${detail})`;
+        }
+        const err = new Error(`PayPal request failed (${res.status}): ${reason}`);
         err.status = 502; // PayPal had a problem
         err.paypal = data; // full details
         throw err;

@@ -121,14 +121,14 @@ export default function WinnerPicker({contestId, version}) {
                     {options.stillScreening === 1 ? "1 entry is" : `${options.stillScreening} entries are`} still being screened. You can pick winners once screening finishes.
                 </p>
             )}
-            {options.needsReview > 0 && (
+            {options.needsReview > 0 && !options.stillScreening && (
                 <p className="notice">
                     {options.needsReview === 1
                         ? "First, review the flagged entry below: shortlist or reject it."
                         : `First, review the ${options.needsReview} flagged entries below: shortlist or reject each one.`}
                 </p>
             )}
-            {options.winnersNeeded === 0 ? (
+            {options.stillScreening > 0 ? null : options.winnersNeeded === 0 ? (
                 <p className="notice">
                     First, review the {options.needsReview === 1 ? "flagged entry" : `${options.needsReview} flagged entries`} below: shortlist or reject each one.
                 </p>    
@@ -173,7 +173,7 @@ export default function WinnerPicker({contestId, version}) {
  
             <div className="actions">
                 <button className="btn-primary" onClick={save} disabled={blocked || saving || !allChosen}>
-                    {saving ? "Saving..." : options.winnersNeeded === 0 ? "Confirm no winners" : "Save winners"}
+                    {saving ? "Saving..." : options.winnersNeeded === 0 && !options.stillScreening ? "Confirm no winners" : "Save winners"}
                 </button>
             </div>
             </div>

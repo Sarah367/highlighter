@@ -103,7 +103,13 @@ export default function ContestView({contestId, presets, onBack, onReviewEntries
             if (!res.ok) throw new Error(data.error);
             setContest(data);
         } catch (err) {
-            setProblem(err.message);
+            // reload the contest: if payout failed after the refund, the page should show that
+            // refund happened, and the saved error (which the winners panel displays)
+            const res = await fetch(`${API_URL}/api/contests/${contest.id}`);
+            const latest = await res.json();
+            if (res.ok) setContest(latest);
+            // only show error at the top if winners panel isn't already showing it
+            if (!res.ok || latest.payoutError !== err.message) setProblem(err.message);
         } finally {
             setPaying(false);
         }
@@ -204,7 +210,11 @@ export default function ContestView({contestId, presets, onBack, onReviewEntries
                         <p>No entries were in good standing, so no prizes were awarded.</p>
                     )}
                     {contest.winners && contest.unusedCents > 0 && (
-                        <p className="hint">{formatMoney(contest.unusedCents)} in unused prizes will be refunded to you when winners are paid.</p>
+                        <p className="hint">
+                            {contest.refund
+                                ? `${formatMoney(contest.refund.amountCents)} in unused prizes was refunded to you.`
+                                : `${formatMoney(contest.unusedCents)} in unused prizes will be refunded to you when you pay your winners.`}
+                        </p>
                     )}
                     {/*payout that failed last time (nothing was paid, so it's safe to try again)*/}
                     {contest.payoutError && <p className="alert">The last payment attempt didn't go through: {contest.payoutError}</p>}
