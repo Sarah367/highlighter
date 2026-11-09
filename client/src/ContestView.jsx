@@ -1,5 +1,5 @@
 import {useEffect, useCallback, useState} from "react";
-import { API_URL } from "./api";
+import { API_URL, authFetch} from "./api";
 import {formatMoney} from "./format";
 import FundContest from "./FundContest";
 import PayoutPanel from "./PayoutPanel";
@@ -48,7 +48,7 @@ export default function ContestView({contestId, presets, onBack, onReviewEntries
     const handleFunded = useCallback((updated) => setContest(updated), []); 
 
     useEffect(() => {
-        fetch(`${API_URL}/api/contests/${contestId}`)
+        authFetch(`${API_URL}/api/contests/${contestId}`)
             .then(async (res) => {
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error);
@@ -98,14 +98,14 @@ export default function ContestView({contestId, presets, onBack, onReviewEntries
         setPaying(true);
         setProblem("");
         try {
-            const res = await fetch(`${API_URL}/api/contests/${contest.id}/pay`, {method: "POST"});
+            const res = await authFetch(`${API_URL}/api/contests/${contest.id}/pay`, {method: "POST"});
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
             setContest(data);
         } catch (err) {
             // reload the contest: if payout failed after the refund, the page should show that
             // refund happened, and the saved error (which the winners panel displays)
-            const res = await fetch(`${API_URL}/api/contests/${contest.id}`);
+            const res = await authFetch(`${API_URL}/api/contests/${contest.id}`);
             const latest = await res.json();
             if (res.ok) setContest(latest);
             // only show error at the top if winners panel isn't already showing it
@@ -120,7 +120,7 @@ export default function ContestView({contestId, presets, onBack, onReviewEntries
 
         setEnding(true);
         try {
-            const res = await fetch(`${API_URL}/api/contests/${contest.id}/close`, {method: "POST"});
+            const res = await authFetch(`${API_URL}/api/contests/${contest.id}/close`, {method: "POST"});
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
             setContest(data);

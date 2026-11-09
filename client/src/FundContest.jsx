@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { getPayPalSdk } from "./paypalSdk";
-import { API_URL } from "./api";
+import { API_URL, authFetch } from "./api";
 
 // paypal button funds a contest's prize pool.
 // onFunded(contest) runs with the updated contest once payment is captured
@@ -26,7 +26,7 @@ export default function FundContest({contest, onFunded}) {
                 onApprove: async ({orderId}) => {
                     setStage("paying");
                     try {
-                        const res = await fetch(`${API_URL}/api/contests/${contest.id}/capture`, {
+                        const res = await authFetch(`${API_URL}/api/contests/${contest.id}/capture`, {
                             method: "POST",
                             headers: {"Content-Type": "application/json"},
                             body: JSON.stringify({orderId}),
@@ -45,7 +45,7 @@ export default function FundContest({contest, onFunded}) {
             
             // asks server to create order
             async function createOrder() {
-                const res = await fetch(`${API_URL}/api/contests/${contest.id}/order`, {method: "POST" });
+                const res = await authFetch(`${API_URL}/api/contests/${contest.id}/order`, {method: "POST" });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error);
                 return {orderId: data.orderId};

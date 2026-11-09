@@ -1,7 +1,7 @@
 import {useState} from "react";
 import {ref, uploadBytesResumable} from "firebase/storage";
 import {storage} from "./firebase";
-import {API_URL} from "./api";
+import {API_URL, authFetch} from "./api";
 import {formatLength} from "./contestDetails";
 
 const MAX_BYTES = 2 * 1024 * 1024 * 1024; // 2 GB , same as the server and the Storage rules
@@ -33,7 +33,7 @@ function readDuration(file, isAudio) {
 
 // Sends JSON to the server and returns its reply, or throws the server's error message.
 async function postJson(path, body) {
-    const res = await fetch(`${API_URL}${path}`, {
+    const res = await authFetch(`${API_URL}${path}`, {
         method: "POST",
         headers: {"Content-Type" : "application/json"},
         body: JSON.stringify(body),

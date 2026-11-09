@@ -1,5 +1,5 @@
 import {useEffect, useState} from "react";
-import { API_URL } from "./api";
+import { API_URL, authFetch } from "./api";
 import {formatMoney} from "./format";
 
 // each winner's payment status, in plain words. these are paypal's status for each payment
@@ -42,7 +42,7 @@ export default function PayoutPanel({contest, onChange}) {
         setChecking(true);
         setProblem("");
         try {// sends request to server to check with paypal and gets updates on the payout status
-            const res = await fetch(`${API_URL}/api/contests/${contest.id}/payout-status`, {method: "POST"});
+            const res = await authFetch(`${API_URL}/api/contests/${contest.id}/payout-status`, {method: "POST"});
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
             onChange(data);

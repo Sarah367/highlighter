@@ -70,7 +70,7 @@ export default function AuthPage({mode}) {
                         <div className="role-options">
                             <button type="button" className="role-option" aria-pressed={role === "creator"} onClick={() => setRole("creator")}>
                                 <strong>Run contests</strong>
-                                <span>Upload You can still enter other creators' contests. You can still enter other creators' contests.</span>
+                                <span>You can still enter other creators' contests.</span>
                             </button>
                             <button type="button" className="role-option" aria-pressed={role === "fan"} onClick={() => setRole("fan")}>
                                 <strong>Enter contests</strong>

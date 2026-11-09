@@ -1,7 +1,7 @@
 import {useCallback, useEffect, useState} from "react";
 import {getDownloadURL, ref} from "firebase/storage";
 import {storage} from "./firebase";
-import {API_URL} from "./api";
+import {API_URL, authFetch} from "./api";
 import {formatTime} from "./format";
 
 // review groups, in order the creator sees them
@@ -204,7 +204,7 @@ export default function EntryReview({contestId, onChange}) {
     // useCallback keeps it same function between redraws so it doesnt restart every time
     const load = useCallback(async () => { 
         try {
-            const res = await fetch(`${API_URL}/api/contests/${contestId}/entries`); // fetches the contest's entries
+            const res = await authFetch(`${API_URL}/api/contests/${contestId}/entries`); // fetches the contest's entries
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
             setEntries(data);
@@ -229,7 +229,7 @@ export default function EntryReview({contestId, onChange}) {
     }, [inProgress, load]);
 
     async function decide(entryId, decision) {
-        const res = await fetch(`${API_URL}/api/entries/${entryId}/decision`, {
+        const res = await authFetch(`${API_URL}/api/entries/${entryId}/decision`, {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({decision}),
@@ -293,7 +293,7 @@ export default function EntryReview({contestId, onChange}) {
 
         try {
             // goes to the bulk route in index.js , which calls decideEntries in entries.js and actually updates the entry's status in Firestore
-            const res = await fetch(`${API_URL}/api/contests/${contestId}/decisions`, {
+            const res = await authFetch(`${API_URL}/api/contests/${contestId}/decisions`, {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({entryIds: selected, decision}), // sends ticket IDs plus the decision (reject or shortlist)
@@ -311,7 +311,7 @@ export default function EntryReview({contestId, onChange}) {
 
     async function rescreen(entryId) {
         // screening takes a while, so dont wait for it; show as in progress and let polling follow along.
-        fetch(`${API_URL}/api/entries/${entryId}/screen?force=true`, {method: "POST"}).catch(() => {});
+        authFetch(`${API_URL}/api/entries/${entryId}/screen?force=true`, {method: "POST"}).catch(() => {});
         setEntries((list) => list.map((e) => (e.id === entryId ? {...e, status: "screening", screeningStep: "transcribing"} : e)));
     }
 
