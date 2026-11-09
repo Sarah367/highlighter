@@ -9,7 +9,8 @@ export function normalize(word) {
     return word.toLowerCase().replace(/[^\p{L}\p{N}']/gu, "");
 }
 
-export async function searchTranscripts(query, episodeIds) {
+// episodeIds: search just these episodes, otherwise, ownerId: search one creator's episodes.
+export async function searchTranscripts(query, episodeIds, ownerId) {
     const terms = query.split(/\s+/).map(normalize).filter(Boolean);
     if (terms.length === 0) return [];
     let episodes;
@@ -17,7 +18,7 @@ export async function searchTranscripts(query, episodeIds) {
         const docs = await db.getAll(...episodeIds.map((id) => db.collection("episodes").doc(id)));
         episodes = docs.filter((d) => d.exists && d.data().status === "ready");
     } else { // otherwise fetch all episodes (whose status is ready)
-        episodes = (await db.collection("episodes").where("status", "==", "ready").get()).docs;
+        episodes = (await db.collection("episodes").where("ownerId", "==", ownerId).where("status", "==", "ready").get()).docs;
     }
 
     const results = [];

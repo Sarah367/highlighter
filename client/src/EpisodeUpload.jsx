@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { ref, uploadBytesResumable } from "firebase/storage";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { db, storage } from "./firebase";
-import { API_URL } from "./api";
+import { auth, db, storage } from "./firebase";
+import { API_URL, authFetch } from "./api";
 
 const MAX_BYTES = 500 * 1024 * 1024; // 500 MB, same limit as Storage rules; just gives friendly message when user uploads more than 500 MB.
 
@@ -76,10 +76,11 @@ export default function EpisodeUpload() {
                         contentType: file.type,
                         sizeBytes: file.size,
                         status: "uploaded", // transcribed/ready will be later.
+                        ownerId: auth.currentUser.uid, // the creator who uploaded it, only they can manage it
                         createdAt: serverTimestamp(),
                     });
                     // start transcription automatically
-                    fetch(`${API_URL}/api/episodes/${docRef.id}/transcribe`, {method: "POST"}).catch(() => {});
+                    authFetch(`${API_URL}/api/episodes/${docRef.id}/transcribe`, {method: "POST"}).catch(() => {});
                     setStatus("done");
                     setMessage("Saved! Transcription has started.");
                     setTitle("");

@@ -3,6 +3,7 @@ import {readFileSync} from "node:fs";
 import { initializeApp, cert } from "firebase-admin/app";
 import {getFirestore} from "firebase-admin/firestore";
 import {getStorage} from "firebase-admin/storage";
+import {getAuth} from "firebase-admin/auth";
 
 // private key file 
 const serviceAccount = JSON.parse(
@@ -17,3 +18,4 @@ const app = initializeApp({
 // Firestore database is named "default" (no parantheses)
 export const db = getFirestore(app, process.env.FIRESTORE_DATABASE_ID);
 export const bucket = getStorage(app).bucket();
+export const adminAuth = getAuth(app); // checks the sign-in tokens the app sends
