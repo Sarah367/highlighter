@@ -43,6 +43,18 @@ export async function optionalUser(req,res,next) {
     }
 }
 
+// for routes that need any signed-in account, creator or fan (like My entries)
+export async function requireUser(req,res,next) {
+    try {
+        const user = await userFromRequest(req);
+        if (!user) throw fail("Log in to do this.", 401);
+        req.user=user;
+        next();
+    } catch (err) {
+        sendError(res,err);
+    }
+}
+
 // for creator-only routes: a valid token, from an account whose role is creator
 export async function requireCreator(req, res, next) {
     try {

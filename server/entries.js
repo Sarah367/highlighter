@@ -38,6 +38,31 @@ function entriesByFan(contestId, email) {
     return db.collection("entries").where("contestId", "==", contestId).where("paypalEmail", "==", email);
 }
 
+// one signed-in fan's entries in one contest, by account
+function entriesByAccount(contestId, uid) {
+    return db.collection("entries").where("contestId", "==", contestId).where("fanUid", "==", uid);
+}
+
+// how many different entries are in these query results. An entry can show up in both lists
+// (same email AND same account), so each entry ID is only counted once.
+// this means that a signed-in fan can't dodge the limit simply by switching emails.
+function countEntries(snapshots) {
+    const ids = [];
+    // we search through both paypal email and the fan account name, because a fan can maliciously
+    // enter multiple entries by switching out the emails... but we know that they are doing this 
+    // because all entries will be linked back to their same account name.
+
+    // thus, looping through both account names and paypal emails allows us to collect ALL POSSIBLE
+    // entry IDs from a user.
+    for (const snapshot of snapshots) {
+        for (const doc of snapshot.docs) { // collects the entry IDs, which is the main source of truth for finding entries from a fan
+            if (!ids.includes(doc.id)) ids.push(doc.id);
+        }
+    }
+
+    return ids.length;
+}
+
 function limitMessage(max) {
     return max === 1 ? "You've already entered this contest." : `You've already used all ${max} of your entries for this contest!`;
 }
@@ -51,12 +76,16 @@ async function deleteUpload(contestId, storagePath) {
 }
 
 // before uploading, ask if this fan can still enter. saves them from uploading a big file for nothing
-export async function checkCanEnter(contestId, rawEmail) {
+// user: the signed-in fan, or null. Signed-in fans' entries count by email AND by account,
+// so they can't get around the limit by switching emails.
+export async function checkCanEnter(contestId, rawEmail, user) {
     const email = normalizeEmail(rawEmail);
     if (!EMAIL_PATTERN.test(email)) throw fail("Enter a valid PayPal email.",  400);
 
     const { contest } = await loadOpenContest(contestId);
-    const used = (await entriesByFan(contestId, email).get()).size;
+    const lists = [await entriesByFan(contestId,email).get()];
+    if (user) lists.push(await entriesByAccount(contestId, user.uid).get());
+    const used = countEntries(lists);
     if (used >= contest.maxEntriesPerFan) {
         throw fail(limitMessage(contest.maxEntriesPerFan), 409); // if user has surpassed their entries
     }
@@ -64,7 +93,8 @@ export async function checkCanEnter(contestId, rawEmail) {
 }
 
 // after file is uploaded, check every rule , save the user's entry and then increment the contest's entry counter.
-export async function createEntry(contestId, input) {
+// user: the signed-in fan, or null. Signed-in fans' entries are linked to their account (for My entries).
+export async function createEntry(contestId, input, user) {
     const email = normalizeEmail(input.paypalEmail);
     const fanName = String(input.fanName ?? "").trim();
     const title = String(input.title ?? "").trim();
@@ -108,14 +138,18 @@ export async function createEntry(contestId, input) {
         // arriving at the same moment can't both slip past the limit or miscount.
         const entryRef = db.collection("entries").doc(); // new ID, chosen before saving
         const entryCount = await db.runTransaction(async (tx) => {
-            const [contestSnap, mine] = await Promise.all([tx.get(contestRef), tx.get(entriesByFan(contestId, email))]);
+            const contestSnap = await tx.get(contestRef);
+            const lists = [await tx.get(entriesByFan(contestId, email))];
+            if (user) lists.push(await tx.get(entriesByAccount(contestId, user.uid)));
             const current = contestSnap.data();
-            if (mine.size >= current.maxEntriesPerFan) throw fail(limitMessage(current.maxEntriesPerFan), 409);
+            
+            if (countEntries(lists) >= current.maxEntriesPerFan) throw fail(limitMessage(current.maxEntriesPerFan), 409);
 
             tx.set(entryRef, {
                 contestId,
                 fanName,
                 paypalEmail: email, // private: never shown publicly
+                fanUid: user ? user.uid : null, // fan's account, if they were signed in (for My entries)
                 title: title || null,
                 description: description || null,
                 storagePath,
@@ -202,3 +236,75 @@ export async function decideEntries(contestId, entryIds, decision) {
     return { updated: refs.length, creatorDecision: decision };
 }
 
+// "1st", "2nd"  etc
+function placeLabel(place) {
+    if (place === 1) return "1st";
+    if (place === 2) return "2nd";
+    if (place === 3) return "3rd";
+    return `${place}th`;
+}
+
+// where a contest is, from a fan's point of view: "open" "judging" (past the deadline, winners not announced yet),
+// or "winners" (winners announced, once they're being paid)
+function contestStage(contest) {
+    if (contest.status === "paying" || contest.status === "paid") return "winners";
+    if (contest.status === "open" && contest.deadline.toDate() > new Date()) return "open";
+    return "judging";
+}
+
+// a signed-in person's entries, for My entries. Only what a fan should see: the contest's stage,
+// and whether they won. Never the AI's flags or the creator's decision, which are the creator's private
+// review tools. Winners only show once they're being paid, since before that, the creator can still change them
+export async function listMyEntries(uid) {
+    const snapshot = await db.collection("entries").where("fanUid", "==", uid).get(); // get person's entries
+
+    const contests = {}; // each contest is loaded once, even if they entered it several times
+    const mine = [];
+
+
+    // small cache: loads each contest once, even if the person entered that contest multiple times.
+    // if a contest allows multiple entries, we do 1 database read instead of potentially hundreds since
+    // we are saving the contest ID 
+    for (const doc of snapshot.docs) { // goes through user's entries
+        const entry = doc.data();
+        if (!(entry.contestId in contests)) {
+            const contestSnap = await db.collection("contests").doc(entry.contestId).get();
+            contests[entry.contestId] = contestSnap.exists ? contestSnap.data() : null;
+        }
+        const contest = contests[entry.contestId]; // get the person's entry from the cache
+
+
+        if (!contest) continue; // the contest was deleted
+
+        const stage = contestStage(contest);
+
+        // did this entry win?? only checked once winners are announced.
+        let win = null;
+        if (stage === "winners" && Array.isArray(contest.winners)) {
+            for (const winner of contest.winners) { // goes through the contest's winners
+                if (winner.entryId !== doc.id) continue; // skips every winner that isn't this entry
+                let paymentStatus = "PENDING"; // found it, find out how the payment is going
+                if (contest.payout && contest.payout.items) { // if paypal has reported back, this holds each place's status, so it looks for this winner's place, and uses that status
+                    for (const item of contest.payout.items) {
+                        if (item.place === winner.place) paymentStatus = item.status;
+                    }
+                }
+                // build win details (if entry wasn't winning, then "win" stays null)
+                win = {place: winner.place, placeLabel: placeLabel(winner.place), prizeCents: winner.prizeCents, paymentStatus };
+            }
+        }
+
+        mine.push({
+            id: doc.id,
+            title: entry.title || "Untitled entry",
+            contestId: entry.contestId,
+            contestTitle: contest.title,
+            deadline: contest.deadline.toDate().toISOString(),
+            stage,
+            win,
+            createdAt: entry.createdAt ? entry.createdAt.toDate().toISOString() : null,
+        });
+    }
+    mine.sort((a,b) => String(b.createdAt).localeCompare(String(a.createdAt))); // newest first
+    return mine;
+}

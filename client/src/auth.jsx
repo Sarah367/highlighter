@@ -1,6 +1,6 @@
 import {createContext, useContext, useEffect, useState} from "react";
 import {createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, signOut, updateProfile} from "firebase/auth";
-import {doc, getDoc, serverTimestamp, setDoc} from "firebase/firestore";
+import {doc, getDoc, serverTimestamp, setDoc, updateDoc} from "firebase/firestore";
 import {auth,db} from "./firebase";
 
 // who's signed in, shared with every page. React "context" lets any component ask for it
@@ -76,8 +76,14 @@ export function AuthProvider({children}) {
     function logOut() {
         return signOut(auth);
     }
+
+    // a fan starts running contests too. (Creators keep everything fans can do, so there's no going back)
+    async function becomeCreator() {
+        await updateDoc(doc(db, "users", user.uid), {role: "creator"});
+        setProfile({...profile, role: "creator"});
+    }
     const isCreator = profile !== null && profile.role === "creator";
-    const value = {user,profile, loading, isCreator, signUp, logIn, logOut};
+    const value = {user,profile, loading, isCreator, signUp, logIn, logOut, becomeCreator};
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

@@ -953,3 +953,31 @@ select:focus {
   .role-options { grid-template-columns: 1fr; }
   .account { padding-left: 0; border-left: 0; }
 }
+
+/* ---------- My entries ---------- */
+
+/* where an entry stands, under its title */
+.entry-result {
+  display: block;
+  margin-top: 6px;
+  font-size: 14px;
+}
+/* a win gets the highlighter, on just its words */
+.entry-won {
+  font-weight: 600;
+  background-image: linear-gradient(transparent 50%, var(--marker) 50%, var(--marker) 92%, transparent 92%);
+}
+/* links in a row's details (like the contest's name) match the text around them */
+.meta a {
+  color: inherit;
+}
+
+/* ---------- Run contests ---------- */
+
+/* what creators can do: a short list with room to breathe */
+.steps-list {
+  margin: 0 0 16px;
+  padding-left: 20px;
+  display: grid;
+  gap: 10px;
+}

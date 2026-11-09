@@ -5,12 +5,12 @@ import { transcribeEpisode } from "./transcribeEpisode.js";
 import { searchTranscripts } from "./searchTranscripts.js";
 import { PRESETS, createContest, listContests, getContest, getPublicContest, listOpenContests } from "./contests.js";
 import { startFunding, finishFunding } from "./contestFunding.js";
-import { checkCanEnter, createEntry } from "./entries.js";
+import { checkCanEnter, createEntry, listMyEntries } from "./entries.js";
 import { screenEntry, listEntries } from "./screenEntry.js";
 import {decideEntry, decideEntries} from "./entries.js";
 import {closeContest, winnerOptions, pickWinners} from "./winners.js";
 import {payWinners, checkPayout} from "./payouts.js";
-import {optionalUser, requireCreator, ownsContest, ownsEpisode, ownsEntry, blockOwnEntry} from "./accounts.js";
+import { optionalUser, requireUser, requireCreator, ownsContest, ownsEpisode, ownsEntry, blockOwnEntry } from "./accounts.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -187,7 +187,7 @@ app.post("/api/contests/:id/entries/check", optionalUser, async (req, res) => {
     try {
         //anyone can enter (signed in or not), but a contest's OWN creator is refused
         await blockOwnEntry(req.params.id, req.user, req.body.paypalEmail); // creators can't enter their own contests
-        res.json(await checkCanEnter(req.params.id, req.body.paypalEmail));
+        res.json(await checkCanEnter(req.params.id, req.body.paypalEmail, req.user));
     } catch (err) {
         sendError(res,err);
     }
@@ -198,7 +198,7 @@ app.post("/api/contests/:id/entries", optionalUser, async (req, res) => {
     try {
         // same thing here: anyone can enter (signed in or not), but a contest's OWN creator is refused!
         await blockOwnEntry(req.params.id, req.user, req.body.paypalEmail);
-        const entry = await createEntry(req.params.id, req.body);
+        const entry = await createEntry(req.params.id, req.body, req.user);
         res.status(201).json(entry);
         // start screening in the background, fan gets confirmation quickly while server transcribes and checks
         // the entry on its own time.
@@ -272,7 +272,14 @@ app.post("/api/contests/:id/winners", requireCreator, ownsContest, async (req, r
     }
 });
 
-// 
+// the signed in person's own entries , for My entries
+app.get("/api/me/entries", requireUser, async (req,res) => {
+    try {
+        res.json(await listMyEntries(req.user.uid));
+    } catch (err) {
+        sendError(res,err);
+    }
+});
 
 app.listen(PORT, () => {
     console.log(`Server listening on http://localhost:${PORT}`);
