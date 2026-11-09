@@ -1,5 +1,5 @@
 import {useState} from "react";
-import {API_URL} from "./api";
+import {API_URL, authFetch} from "./api";
 import {formatTime} from "./format";
 
 // search box that finds every moment a word/phrase is said.
@@ -22,7 +22,7 @@ export default function TranscriptSearch({onResult, episodeIds}) {
                 params.set("episodes", episodeIds.join(","));
             }
 
-            const res = await fetch(`${API_URL}/api/search?${params}`);
+            const res = await authFetch(`${API_URL}/api/search?${params}`);
             const data = await res.json();
 
             if (!res.ok) throw new Error(data.error);

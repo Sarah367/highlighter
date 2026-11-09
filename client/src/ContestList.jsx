@@ -1,5 +1,5 @@
 import {useEffect, useState} from "react";
-import { API_URL } from "./api";
+import { API_URL, authFetch } from "./api";
 import {formatMoney} from "./format";
 
 const STATUS_LABELS = {
@@ -16,7 +16,7 @@ export default function ContestList({presets, refreshKey, onOpen}) {
     const [error, setError] = useState("");
 
     useEffect(() => {
-        fetch(`${API_URL}/api/contests`)
+        authFetch(`${API_URL}/api/contests`)
             .then(async (res) => {
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error);

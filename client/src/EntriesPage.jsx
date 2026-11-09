@@ -1,7 +1,7 @@
 import {useCallback, useEffect, useState} from "react";
 import EntryReview from "./EntryReview";
 import WinnerPicker from "./WinnerPicker";
-import { API_URL } from "./api";
+import { API_URL, authFetch } from "./api";
 
 // entries tab: pick a contest, then review its entries
 // contestId: which contest to show (set when arriving from a contest's "Review entries" button).
@@ -17,7 +17,7 @@ export default function EntriesPage({contestId, onChangeContest}) {
     // only funded contests can have entries, so drafts are left out of the list.
 
     useEffect(() => {
-        fetch(`${API_URL}/api/contests`)
+        authFetch(`${API_URL}/api/contests`)
             .then(async (res) => {
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error);

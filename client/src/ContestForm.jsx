@@ -1,5 +1,5 @@
 import {useEffect, useState} from "react";
-import {API_URL} from "./api";
+import {API_URL, authFetch} from "./api";
 import {formatMoney} from "./format";
 
 // starting values for a custom contest (and before any preset is picked)
@@ -46,7 +46,7 @@ export default function ContestForm({presets, onCreated}) {
 // creator's transcribed episodes, in case they want to narrow the scope of the contest.
 // will only be needed if creator unchecks "Use all my episodes" or something like that.
 useEffect(() => {
-    fetch(`${API_URL}/api/episodes`)
+    authFetch(`${API_URL}/api/episodes`)
         .then((res) => res.json())
         .then((list) => setEpisodes(list.filter((ep) => ep.status === "ready")))
         .catch(() => setEpisodes([]));
@@ -94,7 +94,7 @@ async function save(e) {
     };
 
     try {
-        const res = await fetch(`${API_URL}/api/contests`, {
+        const res = await authFetch(`${API_URL}/api/contests`, {
             method: "POST",
             headers: { "Content-Type": "application/json"},
             body: JSON.stringify(body),

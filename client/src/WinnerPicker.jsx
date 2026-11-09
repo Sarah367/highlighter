@@ -1,5 +1,5 @@
 import {useEffect, useState} from "react";
-import { API_URL } from "./api";
+import { API_URL, authFetch } from "./api";
 import {formatMoney} from "./format";
 import {placeLabel} from "./contestDetails";
 
@@ -20,7 +20,7 @@ export default function WinnerPicker({contestId, version}) {
         // sends request to winnerOptions function in winners.js, which sorts every entry in buckets and gives:
         // candidates in good standing, how many winners are needed, whats blocking (still screening, needs review),
         // the prize amounts, and any saved winners. 
-        fetch(`${API_URL}/api/contests/${contestId}/winner-options`)  
+        authFetch(`${API_URL}/api/contests/${contestId}/winner-options`)  
             .then(async (res) => {
                 const data = await res.json(); // gets server's candidates
                 if (!res.ok) throw new Error(data.error);
@@ -64,7 +64,7 @@ export default function WinnerPicker({contestId, version}) {
         setProblem("");
         setMessage("");
         try {
-            const res = await fetch(`${API_URL}/api/contests/${contestId}/winners`, {
+            const res = await authFetch(`${API_URL}/api/contests/${contestId}/winners`, {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({entryIds: choices}),
