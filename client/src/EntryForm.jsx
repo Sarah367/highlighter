@@ -1,4 +1,6 @@
-import {useState} from "react";
+import {useState, useEffect} from "react";
+import {Link} from "react-router-dom";
+import {useAuth} from "./auth";
 import {ref, uploadBytesResumable} from "firebase/storage";
 import {storage} from "./firebase";
 import {API_URL, authFetch} from "./api";
@@ -55,6 +57,15 @@ export default function EntryForm({contest, onSubmitted}) {
     const [stage, setStage] = useState("form");
     const [progress, setProgress] = useState(0);
     const [problem, setProblem] = useState("");
+    const {profile} = useAuth(); // signed-in person, or null: signing in is optional for fans
+
+    // signed in? fill in their name and email (they can still change them, like a different PayPal email)
+    // only fills empty boxes, so it never overwrites something they already typed
+    useEffect(() => {
+        if (!profile) return;
+        setFanName((current) => current || profile.name || "");
+        setPaypalEmail((current) => current || profile.email || "");
+    }, [profile]);
 
     function rejectFile(message) {
         setProblem(message);
@@ -154,6 +165,7 @@ export default function EntryForm({contest, onSubmitted}) {
             <strong>You're entered, {fanName.trim()}!</strong> The creator reviews entries after the deadline. If you win, your
             prize is sent by PayPal to {paypalEmail.trim()}.
             </p>
+            {profile && <p className="hint">You can follow this entry on <Link to="/my-entries">My entries</Link>.</p>}
             {contest.maxEntriesPerFan > 1 && ( // if contest allows more than one entry 
             <div className="actions">
                 <button onClick={enterAgain}>Submit another entry</button>
@@ -173,7 +185,14 @@ export default function EntryForm({contest, onSubmitted}) {
     }[stage];
 
     return (
-            <form onSubmit={submit} className="stack">
+        <form onSubmit={submit} className="stack">
+            {/* a signed-in fans see their entries later on My entries; signing in is never required however*/}
+        {profile ? (
+            <p className="hint">Signed in as {profile.name}. This entry will show up on your <Link to="/my-entries">My entries</Link>page.</p>
+        ) : (
+            <p className="hint">No account needed to enter. <Link to="/signup">Create one</Link> to fill in your details automatically and track your entries.</p>
+        
+        )}
         <div className="grid-2">
             <label className="field">
             <span className="label">Your name</span>

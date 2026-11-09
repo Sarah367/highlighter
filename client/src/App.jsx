@@ -10,6 +10,9 @@ import {API_URL} from "./api";
 import EntriesPage from "./EntriesPage";
 import AuthPage from "./AuthPage";
 import BrowsePage from "./BrowsePage";
+import MyEntriesPage from "./MyEntriesPage";
+import StartCreatingPage from "./StartCreatingPage";
+import UpgradeButton from "./UpgradeButton";
 import {AuthProvider, useAuth} from "./auth";
 
 export default function App() {
@@ -55,7 +58,8 @@ function SiteApp() {
           <Route path="browse" element={<BrowsePage />}/>
           <Route path="login" element={<AuthPage mode="login" />}/>
           <Route path="signup" element={<AuthPage mode="signup" />} />
- 
+          <Route path="my-entries" element={<RequireUser><MyEntriesPage></MyEntriesPage></RequireUser>}/>
+          <Route path="start-creating" element={<RequireUser><StartCreatingPage></StartCreatingPage></RequireUser>}/>
           {/* creator pages: RequireCreator checks for a creator account before showing them */}
           <Route path="episodes" element={<RequireCreator><EpisodesPage /></RequireCreator>} />
           <Route path="episodes/:episodeId" element={<RequireCreator><EpisodeRoute /></RequireCreator>} />
@@ -100,7 +104,11 @@ function SiteHeader() {
                 <NavLink to="/entries" className="tab"><span>Entries</span></NavLink>
               </>  
             ) : (
-              <NavLink to="/browse" className="tab"><span>Browse contests</span></NavLink>
+              <>
+                <NavLink to="/browse" className="tab"><span>Browse contests</span></NavLink>
+                {/* signed-in fans can start running contests anytime*/}
+                {user && <NavLink to="/start-creating" className="tab"><span>Run contests</span></NavLink>}
+              </>
             )}
           </nav>
 
@@ -109,6 +117,7 @@ function SiteHeader() {
             <div className="account">
               {user ? (
                 <>
+                  <NavLink to="/my-entries" className="tab"><span>My entries</span></NavLink>
                   <span className="account-name">{profile ? profile.name : user.email}</span>
                   <button className="btn-quiet" onClick={handleLogOut}>Log out</button>
                 </>
@@ -134,7 +143,20 @@ function StartPage() {
   return <Navigate to={isCreator ? "/contests" : "/browse"} replace />;
 }
 
-// shows its page only to signed-in creators. Signed out? Log in first, then come back here.
+// shows its page to anyone signed in (creator or fan). if signed out, log in first, then come back here
+function RequireUser({children}) {
+  const {user,loading} = useAuth();
+  const location = useLocation();
+
+  if (loading) return <p className="notice">Loading...</p>
+  if (!user) {
+    const here = location.pathname + location.search;
+    return <Navigate to={`/login?next=${encodeURIComponent(here)}`} replace />;
+  }
+  return children;
+}
+
+// shows its page only to signed-in creators. if signed out, Log in first, then come back here.
 // Signed in as a fan? explain that this page is for creators
 function RequireCreator({children}) {
   const {user, loading, isCreator} = useAuth();
@@ -147,12 +169,16 @@ function RequireCreator({children}) {
   }
   if (!isCreator) {
     return (
-      <div className="page-head">
-        <h1>This page is for creators</h1>
-        <p>
-          Your account is set up for entering contests. <Link to="/browse">Browse open contests</Link>.
-        </p>
-      </div>
+      <>
+        <div className="page-head">
+          <h1>This page is for creators</h1>
+          <p>
+            Your account is set up for entering contests. Want to run your own? You'll keep everything you can do now.
+            Or <Link to="/browse">browse open contests</Link>.
+          </p>
+        </div>
+        <UpgradeButton />
+      </>
     );
   }
   return children;
