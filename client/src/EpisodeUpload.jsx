@@ -45,7 +45,7 @@ export default function EpisodeUpload() {
         }
 
         // upload the file straight from the browser to Firebase Storage. 
-        const storagePath = `episodes/${Date.now()}-${file.name}`; // date.now() makes path unique
+        const storagePath = `episodes/${auth.currentUser.uid}/${Date.now()}-${file.name}`; // your own folder; Date.now() makes the name unique
         const task = uploadBytesResumable(ref(storage, storagePath), file, {
             contentType: file.type, // video or audio.
         });
