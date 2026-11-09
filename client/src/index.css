@@ -125,15 +125,20 @@ p { margin: 0; }
   color: var(--muted);
   padding: 8px 10px;
   font-weight: 500;
+  text-decoration: none; /* the tabs are links now, so no underline */
+  display: inline-block;
 }
 .tab:hover {
   color: var(--ink);
   background: transparent;
 }
+/* the current page's tab. aria-current="page" is set by NavLink (aria-pressed is kept for any old buttons) */
+.tab[aria-current="page"],
 .tab[aria-pressed="true"] {
   color: var(--ink);
   font-weight: 600;
 }
+.tab[aria-current="page"] span,
 .tab[aria-pressed="true"] span {
   background-image: linear-gradient(transparent 50%, var(--marker) 50%, var(--marker) 92%, transparent 92%);
   padding: 0 2px;

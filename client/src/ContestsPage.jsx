@@ -1,11 +1,14 @@
 import {useEffect, useState} from "react";
+import {useNavigate, useParams} from "react-router-dom";
 import ContestForm from "./ContestForm";
 import ContestList from "./ContestList";
 import ContestView from "./ContestView";
 import { API_URL } from "./api";
 
 // creator's contest screen: form on top, their contests below.
-export default function ContestPage({onReviewEntries}) {
+export default function ContestPage() {
+    const {contestId} = useParams(); // only set at /contests/CONTEST_ID
+    const navigate = useNavigate();
     const [presets, setPresets] = useState(null);
     const [loadError, setLoadError] = useState("");
     const [refreshKey, setRefreshKey] = useState(0); 
@@ -21,11 +24,19 @@ export default function ContestPage({onReviewEntries}) {
 
     if (loadError) return <p>Couldn't load presets: {loadError}</p>;
     if (!presets) return <p>Loading...</p>;
-
-    // one contest is open; show that specific contest view instead of the list.
-    if (openContestId) {
-        return <ContestView contestId={openContestId} presets={presets} onBack={()=> setOpenContestId(null)} onReviewEntries={onReviewEntries}/>;
+    // one contest is open (ID is in the address), show that contest instead of the whole list
+    if (contestId) {
+        return (
+            <ContestView
+                key={contestId}
+                contestId={contestId}
+                presets={presets}
+                onBack={() => navigate("/contests")}
+                onReviewEntries={(id) => navigate(`/entries/${id}`)}
+            />
+        )
     }
+
 
     return (
         <>
@@ -40,7 +51,7 @@ export default function ContestPage({onReviewEntries}) {
         {presets && (
             <>
             <ContestForm presets={presets} onCreated={() => setRefreshKey((k) => k + 1)} />
-            <ContestList presets={presets} refreshKey={refreshKey} onOpen={setOpenContestId} />
+            <ContestList presets={presets} refreshKey={refreshKey} onOpen={(id) => navigate(`/contests/${id}`)}/>
             </>
         )}
         </>
