@@ -1,4 +1,5 @@
 import {initializeApp} from "firebase/app";
+import {getAuth} from "firebase/auth";
 import {getFirestore} from "firebase/firestore";
 import {getStorage} from "firebase/storage";
 // values come from client/.env.local
@@ -16,3 +17,4 @@ const app = initializeApp(firebaseConfig);
 
 export const db = getFirestore(app, "default"); // the database
 export const storage = getStorage(app); // file storage (video files.)
+export const auth = getAuth(app); // accounts: signing up , logging in, and who is signed in

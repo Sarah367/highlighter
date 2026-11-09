@@ -28,7 +28,9 @@ export async function getPublicContest(id) {
             const refs = contest.eligibleEpisodeIds.map((episodeId) => db.collection("episodes").doc(episodeId));
             episodeDocs = (await db.getAll(...refs)).filter((d) => d.exists && d.data().status === "ready");
         } else { // otherwise just return every transcribed episode. 
-            episodeDocs = (await db.collection("episodes").where("status", "==", "ready").get()).docs;
+            let episodesQuery = db.collection("episodes").where("status", "==", "ready");
+            if (contest.ownerId) episodesQuery = episodesQuery.where("ownerId", "==", contest.ownerId);
+            episodeDocs = (await episodesQuery.get()).docs;
 
         }
     }
@@ -120,7 +122,8 @@ export function validateContest(input) {
     };
 }
 
-export async function createContest(input) {
+// owner ID --> signed-in creator making this contest
+export async function createContest(input, ownerId) {
     const {errors, contest} = validateContest(input);
 
     if (errors) {
@@ -132,6 +135,7 @@ export async function createContest(input) {
 
     const ref = await db.collection("contests").add({
         ...contest,
+        ownerId, // creator who opens and owns this contest : ONLY they can manage it
         status: "draft", // becomes "open" once the prize pool is funded via paypal!
         createdAt: FieldValue.serverTimestamp(),
     });
@@ -163,9 +167,11 @@ function toJson(doc) {
 }
 
 // gets all contests (newest first).
-export async function listContests() {
-    const snapshot = await db.collection("contests").orderBy("createdAt", "desc").get();
-    return snapshot.docs.map(toJson);
+export async function listContests(ownerId) {
+    const snapshot = await db.collection("contests").where("ownerId", "==", ownerId).get();
+    const contests = snapshot.docs.map(toJson);
+    contests.sort((a,b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+    return contests;
 }
 
 export async function getContest(id) {
@@ -173,3 +179,21 @@ export async function getContest(id) {
     return doc.exists ? toJson(doc) : null;
 }
 
+// every contest fans can enter right now, for the Browse page. Only fan-safe fields, like the fan page. 
+// sorted so the contests ending soonest come first.
+export async function listOpenContests() {
+    const snapshot = await db.collection("contests").where("status", "==", "open").get();
+    const open = [];
+    for (const doc of snapshot.docs) {
+        const contest = toJson(doc);
+        if (contest.closed) continue; // open in the database, but its actually past its deadline
+
+        const pub = {id: contest.id};
+        for (const field of PUBLIC_FIELDS) {
+            if (contest[field] !== undefined) pub[field] = contest[field];
+        }
+        open.push(pub);
+    }
+    open.sort((a,b) => new Date(a.deadline)-new Date(b.deadline));
+    return open;
+}

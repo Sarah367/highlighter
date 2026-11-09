@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
-import { db } from "./firebase";
-import { API_URL } from "./api";
+import { collection, onSnapshot, orderBy, query, where} from "firebase/firestore";
+import { auth, db } from "./firebase";
+import { API_URL, authFetch } from "./api";
 import { formatTime } from "./format";
 
 const STATUS_LABELS = {
@@ -11,6 +11,12 @@ const STATUS_LABELS = {
     error: "Failed",
 };
 
+// a Firestore timestamp in milliseconds, for sorting (0 while its being saved)
+function millis(timestamp) {
+    if (!timestamp) return 0;
+    return timestamp.toMillis();
+}
+
 export default function EpisodeList({onOpen}) {
     const [episodes, setEpisodes] = useState([]);
     const [loadError, setLoadError] = useState("");
@@ -18,10 +24,15 @@ export default function EpisodeList({onOpen}) {
     // live listener; list updates by itself when an episode is added or its status is changed
     // via "onSnapshot"
     useEffect(() => {
-        const q = query(collection(db, "episodes"), orderBy("createdAt", "desc"));
+        // only the signed-in creator's episodes. sorted below, newest first
+        const q = query(collection(db, "episodes"), where("ownerId", "==", auth.currentUser.uid));
         const unsubscribe = onSnapshot(
             q,
-            (snapshot) => setEpisodes(snapshot.docs.map((d) => ({id: d.id, ...d.data()}))),
+            (snapshot) => {
+                const list = snapshot.docs.map((d) => ({id: d.id, ...d.data()}));
+                list.sort((a,b) => millis(b.createdAt) - millis(a.createdAt));
+                setEpisodes(list);
+            },
             (err) => setLoadError(err.message)
         );
         return unsubscribe; // stop listening when this component disappears.
@@ -29,7 +40,7 @@ export default function EpisodeList({onOpen}) {
 
     async function transcribe(id) {
         try {
-            const res = await fetch(`${API_URL}/api/episodes/${id}/transcribe`, {method: "POST"});
+            const res = await authFetch(`${API_URL}/api/episodes/${id}/transcribe`, {method: "POST"});
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
         } catch (err) {

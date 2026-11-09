@@ -21,7 +21,7 @@ function toSentences(words) {
     return sentences.map((ws) => ({ start: ws[0].start, words: ws, text: ws.map((w) => w.word).join(" ") }));
 }
 
-export default function EpisodeView({episodeId, startAt = 0, onBack, backLabel="Back to episodes"}) {
+export default function EpisodeView({episodeId, startAt = 0, onBack, backLabel="Back to episodes", rememberTime=false}) {
     const [episode, setEpisode] = useState(null);
     const [mediaUrl, setMediaUrl] = useState("");
     const [words, setWords] = useState([]);
@@ -29,6 +29,7 @@ export default function EpisodeView({episodeId, startAt = 0, onBack, backLabel="
     const [currentTime, setCurrentTime] = useState(0);
     const mediaRef = useRef(null); // handle on the <video> or <audio> element
     const listRef = useRef(null); // a handle on the scrolling transcript box.
+    const savedSecondRef = useRef(-1);
 
     // 1. watch the episode's record live, so status changes appear immediately.
     useEffect(() => {
@@ -112,6 +113,23 @@ export default function EpisodeView({episodeId, startAt = 0, onBack, backLabel="
         }
     }, [activeIndex]);
 
+    // runs several times a second while the video plays
+    function handleTimeUpdate(e) {
+        const seconds = e.target.currentTime;
+        setCurrentTime(seconds);
+
+        if (!rememberTime) return;
+        // write current second into address, but only when it changes (not several times a second)
+        const second = Math.floor(seconds);
+        if (second === savedSecondRef.current) return;
+        savedSecondRef.current=second;
+
+        const address = second > 0 ? `${window.location.pathname}?t=${second}` : window.location.pathname;
+        // replaceState changes the address without adding a history step (so Back still works)
+        // and without telling React Router, so the page doesn't redraw or jump while the video plays
+        window.history.replaceState(window.history.state, "", address);
+    }
+ 
     function jumpTo(seconds) {
         const media = mediaRef.current;
         if (!media)return;
@@ -148,7 +166,7 @@ export default function EpisodeView({episodeId, startAt = 0, onBack, backLabel="
             className="player"
             src={mediaUrl}
             controls
-            onTimeUpdate={(e) => setCurrentTime(e.target.currentTime)}
+            onTimeUpdate={handleTimeUpdate}
             />
         )}
     

@@ -3,13 +3,14 @@ import cors from "cors";
 import { db, bucket } from "./firebaseAdmin.js";
 import { transcribeEpisode } from "./transcribeEpisode.js";
 import { searchTranscripts } from "./searchTranscripts.js";
-import { PRESETS, createContest, listContests, getContest, getPublicContest } from "./contests.js";
+import { PRESETS, createContest, listContests, getContest, getPublicContest, listOpenContests } from "./contests.js";
 import { startFunding, finishFunding } from "./contestFunding.js";
 import { checkCanEnter, createEntry } from "./entries.js";
 import { screenEntry, listEntries } from "./screenEntry.js";
 import {decideEntry, decideEntries} from "./entries.js";
 import {closeContest, winnerOptions, pickWinners} from "./winners.js";
 import {payWinners, checkPayout} from "./payouts.js";
+import {optionalUser, requireCreator, ownsContest, ownsEpisode, ownsEntry, blockOwnEntry} from "./accounts.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -21,15 +22,24 @@ app.get("/api/health", (req,res) => {
     res.json({ok: true, message: "Highlighter server is running."});
 });
 
+// when an episode was created, in milliseconds (0 if it doesnt say) , for sorting newest first 
+function createdMillis(doc) {
+    const createdAt= doc.data().createdAt;
+    if (!createdAt) return 0;
+    return createdAt.toMillis();
+}
+
 // Lists every episode, newest first, and checks that each one's video file exists within Storage.
 // Proves that server can read both Firestore and Storage.
-
-app.get("/api/episodes", async (req,res) => {
+app.get("/api/episodes", requireCreator, async (req,res) => {
     try {
+        // only the signed-in creator's episodes. They're sorted here, newest first
         const snapshot = await db.collection("episodes").orderBy("createdAt", "desc").get();
+        const docs = [...snapshot.docs];
+        docs.sort((a,b) => createdMillis(b) - createdMillis(a));
 
         const episodes = await Promise.all(
-            snapshot.docs.map(async (doc) => {
+            docs.map(async (doc) => {
                 const data = doc.data();
                 const [fileExists] = await bucket.file(data.storagePath).exists();
                 return { id: doc.id, title: data.title, status: data.status, storagePath: data.storagePath, fileExists};
@@ -43,7 +53,7 @@ app.get("/api/episodes", async (req,res) => {
 });
 // transcribes episode (or returns saved result if already done transcribing).
 // adds ?force=true to redo transcription if stuck.
-app.post("/api/episodes/:id/transcribe", async(req,res) => {
+app.post("/api/episodes/:id/transcribe", requireCreator, ownsEpisode, async(req,res) => {
     try {
         const result = await transcribeEpisode(req.params.id, { force: req.query.force === "true" });
         res.json(result);
@@ -73,14 +83,16 @@ app.get("/api/episodes/:id/transcript", async (req, res) => {
     }
 });
 
-// finds every moment a word/phrase is said
-app.get("/api/search", async (req,res) => {
+// a contest's fan page searches that contest's episodes (?episodes=...), which anyone can do.
+// without a list of episodes, it's a creator searching their own episodes, so they must be signed in
+app.get("/api/search", optionalUser, async (req,res) => {
     try {
         const q = (req.query.q || "").trim();
         if (!q) return res.status(400).json({error: "Add something to search for, like ?q=literally"});
 
         const episodeIds = req.query.episodes ? req.query.episodes.split(",") : null;
-        const results = await searchTranscripts(q, episodeIds);
+        if (!episodeIds && !req.user) return res.status(401).json({error: "Log in to search your episodes."});
+        const results = await searchTranscripts(q, episodeIds, req.user ? req.user.uid : null);
         res.json({ query: q, count: results.length, results});
     } catch (err) {
         console.error(err);
@@ -94,9 +106,9 @@ app.get("/api/contest-presets", (req, res) => {
 });
 
 // checks contest and saves it as a draft.
-app.post("/api/contests", async (req,res) => {
+app.post("/api/contests", requireCreator, async (req,res) => {
     try {
-        const contest = await createContest(req.body);
+        const contest = await createContest(req.body, req.user.uid);
         res.status(201).json(contest);
     } catch(err) {
         if (!err.status) console.error(err);
@@ -105,9 +117,9 @@ app.post("/api/contests", async (req,res) => {
 });
 
 // lists every contest, newest first.
-app.get("/api/contests", async(req,res) => {
+app.get("/api/contests", requireCreator, async(req,res) => {
     try {
-        res.json(await listContests());
+        res.json(await listContests(req.user.uid));
     } catch(err) {
         console.error(err);
         res.status(500).json({error: err.message});
@@ -115,7 +127,7 @@ app.get("/api/contests", async(req,res) => {
 });
 
 // gets one contest
-app.get("/api/contests/:id", async (req, res) => {
+app.get("/api/contests/:id", requireCreator, ownsContest, async (req, res) => {
     try {
         const contest = await getContest(req.params.id);
         if (!contest) return res.status(404).json({error: "No contest with that ID."});
@@ -132,7 +144,7 @@ function sendError(res, err) {
 }
 
 // funding; create the PayPal order for a contest's prize pool
-app.post("/api/contests/:id/order", async (req,res) => {
+app.post("/api/contests/:id/order", requireCreator, ownsContest, async (req,res) => {
     try {
         res.json(await startFunding(req.params.id));
 
@@ -142,9 +154,18 @@ app.post("/api/contests/:id/order", async (req,res) => {
 });
 
 // after the creator approves in PayPal, capture the payment and open the contest.
-app.post("/api/contests/:id/capture", async(req,res) => {
+app.post("/api/contests/:id/capture", requireCreator, ownsContest, async(req,res) => {
     try {
         res.json(await finishFunding(req.params.id, req.body.orderId));
+    } catch (err) {
+        sendError(res, err);
+    }
+});
+
+// every contest fans can enter right now, for the Browse page
+app.get("/api/public/contests", async (req,res) => {
+    try {
+        res.json(await listOpenContests()); 
     } catch (err) {
         sendError(res, err);
     }
@@ -162,8 +183,10 @@ app.get("/api/public/contests/:id", async (req,res) => {
 });
 
 // entries, step 1: before uploading, check that this fan can still enter.
-app.post("/api/contests/:id/entries/check", async (req, res) => {
+app.post("/api/contests/:id/entries/check", optionalUser, async (req, res) => {
     try {
+        //anyone can enter (signed in or not), but a contest's OWN creator is refused
+        await blockOwnEntry(req.params.id, req.user, req.body.paypalEmail); // creators can't enter their own contests
         res.json(await checkCanEnter(req.params.id, req.body.paypalEmail));
     } catch (err) {
         sendError(res,err);
@@ -171,8 +194,10 @@ app.post("/api/contests/:id/entries/check", async (req, res) => {
 });
 
 // entries, step 2: after uploading, check every rule, and save the entry.
-app.post("/api/contests/:id/entries", async (req, res) => {
+app.post("/api/contests/:id/entries", optionalUser, async (req, res) => {
     try {
+        // same thing here: anyone can enter (signed in or not), but a contest's OWN creator is refused!
+        await blockOwnEntry(req.params.id, req.user, req.body.paypalEmail);
         const entry = await createEntry(req.params.id, req.body);
         res.status(201).json(entry);
         // start screening in the background, fan gets confirmation quickly while server transcribes and checks
@@ -184,7 +209,7 @@ app.post("/api/contests/:id/entries", async (req, res) => {
     }
 });
 // screening, run for one entry or redo with force
-app.post("/api/entries/:id/screen", async (req,res) => {
+app.post("/api/entries/:id/screen", requireCreator, ownsEntry, async (req,res) => {
     try {
         res.json(await screenEntry(req.params.id, {force: req.query.force === "true"}));
 
@@ -194,7 +219,7 @@ app.post("/api/entries/:id/screen", async (req,res) => {
 });
 
 // creator's list of contest's entries, with the screening results
-app.get("/api/contests/:id/entries", async(req, res) => {
+app.get("/api/contests/:id/entries", requireCreator, ownsContest, async(req, res) => {
     try {
         res.json(await listEntries(req.params.id));
     } catch (err) {
@@ -202,7 +227,7 @@ app.get("/api/contests/:id/entries", async(req, res) => {
     }
 });
 // creator's decision on entry
-app.post("/api/entries/:id/decision", async (req,res) => {
+app.post("/api/entries/:id/decision", requireCreator, ownsEntry, async (req,res) => {
     try {
         res.json(await decideEntry(req.params.id, req.body.decision ?? null));
     } catch (err) {
@@ -211,7 +236,7 @@ app.post("/api/entries/:id/decision", async (req,res) => {
 });
 
 // bulk decision: {"entryIds": [...], "decision": "shortlist" | "reject" | null}
-app.post("/api/contests/:id/decisions", async (req,res) => {
+app.post("/api/contests/:id/decisions", requireCreator, ownsContest, async (req,res) => {
     try {
         res.json(await decideEntries(req.params.id, req.body.entryIds, req.body.decision ?? null));
 
@@ -221,7 +246,7 @@ app.post("/api/contests/:id/decisions", async (req,res) => {
 });
 
 // "End contest now" : no more entries, and winners can be picked.
-app.post("/api/contests/:id/close", async (req, res) => {
+app.post("/api/contests/:id/close", requireCreator, ownsContest, async (req, res) => {
     try {
         res.json(await closeContest(req.params.id));
     } catch (err) {
@@ -230,7 +255,7 @@ app.post("/api/contests/:id/close", async (req, res) => {
 });
 
 // who can win, how many winners are needed, and anything that has to happen first.
-app.get("/api/contests/:id/winner-options", async(req, res) => {
+app.get("/api/contests/:id/winner-options", requireCreator, ownsContest, async(req, res) => {
     try {
         res.json(await winnerOptions(req.params.id));
     } catch (err) {
@@ -239,7 +264,7 @@ app.get("/api/contests/:id/winner-options", async(req, res) => {
 });
 
 // saves the winners: {"entryIds": [1st place, 2nd place, ...]}
-app.post("/api/contests/:id/winners", async (req, res) => {
+app.post("/api/contests/:id/winners", requireCreator, ownsContest, async (req, res) => {
     try {
         res.json(await pickWinners(req.params.id, req.body.entryIds));
     } catch (err) {
@@ -254,7 +279,7 @@ app.listen(PORT, () => {
 });
 
 // "Pay winners" : refunds unused prizes, then pays every winner in one PayPal batch
-app.post("/api/contests/:id/pay", async (req, res) => {
+app.post("/api/contests/:id/pay", requireCreator, ownsContest, async (req, res) => {
     try {
         res.json(await payWinners(req.params.id));
     } catch (err) {
@@ -263,10 +288,11 @@ app.post("/api/contests/:id/pay", async (req, res) => {
 });
 
 // asks PayPal how the payout is going, and updates each winner's payment status
-app.post("/api/contests/:id/payout-status", async(req,res) => {
+app.post("/api/contests/:id/payout-status", requireCreator, ownsContest, async(req,res) => {
     try {
         res.json(await checkPayout(req.params.id));
     } catch(err) {
         sendError(res,err);
     }
 });
+
