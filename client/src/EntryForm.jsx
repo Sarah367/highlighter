@@ -188,7 +188,7 @@ export default function EntryForm({contest, onSubmitted}) {
         <form onSubmit={submit} className="stack">
             {/* a signed-in fans see their entries later on My entries; signing in is never required however*/}
         {profile ? (
-            <p className="hint">Signed in as {profile.name}. This entry will show up on your <Link to="/my-entries">My entries</Link>page.</p>
+            <p className="hint">Signed in as {profile.name}. This entry will show up on your <Link to="/my-entries">My entries</Link> page.</p>
         ) : (
             <p className="hint">No account needed to enter. <Link to="/signup">Create one</Link> to fill in your details automatically and track your entries.</p>
         
