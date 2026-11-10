@@ -15,7 +15,13 @@ import { optionalUser, requireUser, requireCreator, ownsContest, ownsEpisode, ow
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors({ origin: "http://localhost:5173"}));
+// which websites may call this server: the app on your computer, plus the deployed app's address(es),
+// set in CLIENT_ORIGIN (more than one can be separated by commas).
+const allowedOrigins = ["http://localhost:5173"];
+if (process.env.CLIENT_ORIGIN) {
+    for (const origin of process.env.CLIENT_ORIGIN.split(",")) allowedOrigins.push(origin.trim());
+}
+app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 
 app.get("/api/health", (req,res) => {
