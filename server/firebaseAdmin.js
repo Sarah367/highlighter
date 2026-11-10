@@ -5,10 +5,14 @@ import {getFirestore} from "firebase-admin/firestore";
 import {getStorage} from "firebase-admin/storage";
 import {getAuth} from "firebase-admin/auth";
 
-// private key file 
-const serviceAccount = JSON.parse(
-    readFileSync(new URL("./serviceAccountKey.json", import.meta.url), "utf8")
-);
+// on your computer: the key file. Online: the same key, stored as a setting (FIREBASE_SERVICE_ACCOUNT),
+// since the key file is never uploaded to GitHub.
+let serviceAccount;
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+} else {
+    serviceAccount = JSON.parse(readFileSync(new URL("./serviceAccountKey.json", import.meta.url), "utf8"));
+}
 
 const app = initializeApp({
     credential: cert(serviceAccount),
