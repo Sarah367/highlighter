@@ -44,7 +44,10 @@ export default function BrowsePage() {
                                         <span>{timeLeft(c.deadline)}</span>
                                     </div>
                                 </div>
-                                <Link className="button-link" to={`/c/${c.id}`}>View contest</Link>
+                                <div className="row-actions">
+                                    <Link className="button-link" to={`/c/${c.id}/episodes`}>Search episodes</Link>
+                                    <Link className="button-link" to={`/c/${c.id}`}>View contest</Link>
+                                </div>
                             </li>
                         );
                     })}

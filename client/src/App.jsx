@@ -14,6 +14,10 @@ import MyEntriesPage from "./MyEntriesPage";
 import StartCreatingPage from "./StartCreatingPage";
 import UpgradeButton from "./UpgradeButton";
 import {AuthProvider, useAuth} from "./auth";
+import HomePage from "./HomePage";
+import ContestEpisodesPage from "./ContestEpisodesPage";
+import AccountPage from "./AccountPage";
+
 
 export default function App() {
   const [serverDown, setServerDown] = useState(false);
@@ -48,13 +52,14 @@ export default function App() {
 // Only creators can look at their episodes, contests, entries, and pages under them
 
 function SiteApp() {
+  const location = useLocation();
+  const wide = location.pathname === "/"; // home page uses wider layout than rest of the site
   return (
     <>
-      <SiteHeader/>
-      <main className="container page">
+      <SiteHeader wide={wide}/>
+      <main className={wide ? "container container-wide page" : "container page"}>
         <Routes>
-          {/* the home page will go here; for now, send people to their starting page */}
-          <Route index element={<StartPage />}/>
+          <Route index element={<HomePage />} />
           <Route path="browse" element={<BrowsePage />}/>
           <Route path="login" element={<AuthPage mode="login" />}/>
           <Route path="signup" element={<AuthPage mode="signup" />} />
@@ -65,20 +70,24 @@ function SiteApp() {
           <Route path="episodes/:episodeId" element={<RequireCreator><EpisodeRoute /></RequireCreator>} />
           <Route path="contests" element={<RequireCreator><ContestsPage /></RequireCreator>} />
           <Route path="contests/:contestId" element={<RequireCreator><ContestsPage /></RequireCreator>} />
+          <Route path="account" element={<RequireUser><AccountPage/></RequireUser>}/>
+          {/* searching a contest's episodes, and watching one at a moment */}
+          <Route path="/c/:contestId/episodes" element={<ContestEpisodesPage/>}/>
+          <Route path="/c/:contestId/episodes/:episodeId" element={<ContestEpisodesPage/>}/>
+
           <Route path="entries" element={<RequireCreator><EntriesRoute /></RequireCreator>} />
           <Route path="entries/:contestId" element={<RequireCreator><EntriesRoute /></RequireCreator>} />
 
           <Route path="*" element={<NotFound />} /> 
         </Routes>
       </main>
-
-
+      
     </>
   );
 }
 
 // the header changes with who's signed in: creators see their tabs, everyone else sees Browse contests.
-function SiteHeader() {
+function SiteHeader({wide}) {
   const {user, profile, loading, isCreator, logOut} = useAuth();
   const navigate = useNavigate();
 
@@ -89,7 +98,7 @@ function SiteHeader() {
 
   return (
     <header className="app-header">
-      <div className="container header-inner">
+      <div className={wide ? "container container-wide header-inner" : "container header-inner"}>
         <Link to="/" className="brand">
           <span className="marker">Highlighter</span>
         </Link>
@@ -118,7 +127,8 @@ function SiteHeader() {
               {user ? (
                 <>
                   <NavLink to="/my-entries" className="tab"><span>My entries</span></NavLink>
-                  <span className="account-name">{profile ? profile.name : user.email}</span>
+                  {/* your name opens your account page */}
+                  <NavLink to="/account" className="account-name">{profile ? profile.name : user.email}</NavLink>
                   <button className="btn-quiet" onClick={handleLogOut}>Log out</button>
                 </>
               ) : (

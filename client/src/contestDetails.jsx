@@ -5,8 +5,15 @@ export const STATUS_LABELS = {
     draft: "Draft",
     open: "Open for entries",
     closed: "Closed",
+    paying: "Paying winners",
     paid: "Winners paid",
 };
+
+// a contest's status to show: an open contest past its deadline shows as closed,even before
+// anything updates it in the database (derive dont store)
+export function statusKeyOf(contest) {
+    return contest.closed && contest.status === "open" ? "closed" : contest.status;
+}
 
 const SOURCE_LABELS = {
     required: "Required: entries must use clips from the episodes below",

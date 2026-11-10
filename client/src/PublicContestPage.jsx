@@ -1,18 +1,17 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { API_URL } from "./api";
-import { formatMoney, formatTime } from "./format";
+import { formatMoney} from "./format";
 import { PrizeList, RulesList, timeLeft } from "./contestDetails";
-import TranscriptSearch from "./TranscriptSearch";
-import EpisodeView from "./EpisodeView";
 import EntryForm from "./EntryForm";
+import { ContestTabs, FanHeader } from "./ContestShell";
 
 // the page a creator shares with fans: /c/CONTEST_ID
 export default function PublicContestPage() {
     const {contestId} = useParams(); // the ID from the address
     const [contest, setContest] = useState(null);
     const [problem, setProblem] = useState("");
-    const [openEpisode, setOpenEpisode] = useState(null); // {id,startAt}
+    
 
     useEffect(() => {
         fetch(`${API_URL}/api/public/contests/${contestId}`)
@@ -26,15 +25,7 @@ export default function PublicContestPage() {
 
     return (
         <>
-            <header className="app-header">
-                <div className="container header-inner">
-                    <Link to="/" className="brand">
-                        <span className = "marker">Highlighter</span>
-                    </Link>
-                    <span className="hint">Fan contest</span>
-                </div>
-            </header>
-
+            <FanHeader/>
             <main className="container page">{renderBody()}</main>
         </>
     );
@@ -44,21 +35,9 @@ export default function PublicContestPage() {
             return <p className={problem ? "alert" : "notice"}>{problem || "Loading contest..."}</p>;
         }
 
-        // a fan is watching an episode: show the player, with a way back to the contest.
-        if (openEpisode) {
-            return (
-                <EpisodeView
-                    episodeId={openEpisode.id}
-                    startAt={openEpisode.startAt}
-                    backLabel="Back to the contest"
-                    onBack={() => setOpenEpisode(null)}
-                />
-            );
-        }
 
         const isOpen = contest.status === "open" && new Date(contest.deadline) > new Date();
         const entries = contest.entryCount ?? 0;
-        const episodeIds = contest.episodes.map((ep) => ep.id);
 
         return (
             <>
@@ -80,7 +59,19 @@ export default function PublicContestPage() {
                             </span>
                         </div>
                     </div>
+                    <ContestTabs contestId={contestId} />
                 </div>
+                {/* the transcript search, one click away: it's how fans find clips */}
+                {contest.episodes.length > 0 && (
+                    <Link className="search-callout" to={`/c/${contestId}/episodes`}>
+                        <strong>Looking for clips?</strong>
+                        <span>
+                            Search everything the creator said in this contest's{" "}
+                            {contest.episodes.length === 1 ? "episode" : `${contest.episodes.length} episodes`}, and jump to the exact moment.
+                        </span>
+                        <span className="search-callout-arrow" aria-hidden="true">→</span>
+                    </Link>
+                )}
                 <section className="panel">
                     <h2>{isOpen ? "Enter this contest" : "This contest is closed"}</h2>
                     {isOpen ? (
@@ -102,26 +93,7 @@ export default function PublicContestPage() {
                     <h2>Rules</h2>
                     <RulesList contest={contest}/>
                 </div>
-                {contest.episodes.length > 0 && (
-                    <>
-                        <TranscriptSearch episodeIds={episodeIds} onResult={(id, seconds) => setOpenEpisode({ id, startAt: seconds })} />
-                            <section className="block">
-                            <h2>Episodes you can use</h2>
-                            <ul className="rows">
-                                {contest.episodes.map((ep) => (
-                                <li key={ep.id} className="row">
-                                    <div className="row-main">
-                                    <span className="row-title">{ep.title}</span>
-                                    {ep.durationSec ? <span className="meta">{formatTime(ep.durationSec)}</span> : null}
-                                    </div>
-                                    <button onClick={() => setOpenEpisode({ id: ep.id, startAt: 0 })}>Watch</button>
-                                </li>
-                                ))}
-                            </ul>
-                            </section>
-                        </>
-                )}
-            </>
+                </>
         );
     }
 }

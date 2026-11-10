@@ -77,13 +77,20 @@ export function AuthProvider({children}) {
         return signOut(auth);
     }
 
+    // changes the name shown on the account (and filled in on new entries)
+    async function updateName(name) {
+        await updateDoc(doc(db, "users", user.uid), {name});
+        await updateProfile(user, {displayName: name});
+        setProfile({...profile, name});
+    }
+
     // a fan starts running contests too. (Creators keep everything fans can do, so there's no going back)
     async function becomeCreator() {
         await updateDoc(doc(db, "users", user.uid), {role: "creator"});
         setProfile({...profile, role: "creator"});
     }
     const isCreator = profile !== null && profile.role === "creator";
-    const value = {user,profile, loading, isCreator, signUp, logIn, logOut, becomeCreator};
+    const value = {user,profile, loading, isCreator, signUp, logIn, logOut, becomeCreator, updateName};
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

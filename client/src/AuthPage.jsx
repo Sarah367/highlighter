@@ -21,7 +21,9 @@ export default function AuthPage({mode}) {
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [role, setRole] = useState(""); // "creator" or "fan", chosen when signing up
+    // creator or fan, chosen when signing up. The home page's "Start a contest" adds ?role=creator,
+    // so "Run contests" is already picked.
+    const [role, setRole] = useState(searchParams.get("role") === "creator" ? "creator" : "");
     const [problem, setProblem] = useState("");
     const [busy, setBusy] = useState(false);
 
