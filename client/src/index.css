@@ -981,3 +981,502 @@ select:focus {
   display: grid;
   gap: 10px;
 }
+
+/* ---------- Home page ---------- */
+
+/* the home page (and its header) get a wider layout than the rest of the site */
+.container-wide {
+  max-width: 1120px;
+}
+
+/* the pitch on the left, a preview of the review screen on the right */
+.hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 48px;
+  padding: 40px 0 8px;
+}
+.hero-text {
+  flex: 1 1 420px;
+  display: grid;
+  gap: 20px;
+}
+.hero h1 {
+  font-size: clamp(34px, 6vw, 54px);
+  line-height: 1.06;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+.hero-lede {
+  font-size: 19px;
+  line-height: 1.55;
+  color: var(--muted);
+  margin: 0;
+}
+
+/* the review screen preview: a card, tilted slightly so it reads as a picture of the app */
+.preview-card {
+  flex: 1 1 400px;
+  display: grid;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.08);
+  transform: rotate(-1deg);
+}
+.preview-head,
+.preview-row,
+.preview-row-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.preview-head { font-size: 15px; }
+.preview-row {
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 12px;
+}
+.preview-row-flagged {
+  display: grid;
+  justify-content: stretch; /* rows fill the card's width, so labels sit on the right */
+  border-color: #e9cf4f;
+  background: #fffdf2;
+}
+.preview-reason { font-size: 13.5px; line-height: 1.5; }
+
+/* small status labels, like on the review screen */
+.pill {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.pill-good { color: var(--success); background: #e7f4ea; }
+.pill-bad { color: #9b1c12; background: #fdecea; }
+.pill-warn { color: #6b5200; background: var(--marker-soft); }
+
+/* sections */
+.home-section { margin-top: 88px; }
+.home-section h2 { margin-bottom: 18px; }
+.eyebrow {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.home-title {
+  font-size: clamp(26px, 4vw, 34px);
+  letter-spacing: -0.01em;
+  margin: 0 0 28px;
+}
+.how-number {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 15px;
+  background: var(--hover);
+  transition: background 0.2s ease;
+}
+
+/* How it works: the steps scroll on the left, the panel stays pinned on the right */
+.sticky-layout {
+  display: flex;
+  gap: 48px;
+  align-items: flex-start;
+}
+.sticky-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1 1 0;
+  min-width: 0;
+}
+.sticky-step {
+  display: flex;
+  gap: 16px;
+  padding: 72px 0; /* tall steps, so each spends a while in the middle of the screen */
+  border-top: 1px solid var(--rule);
+  opacity: 0.4;
+  transition: opacity 0.25s ease;
+}
+.sticky-step:last-child { border-bottom: 1px solid var(--rule); }
+.sticky-step.is-active { opacity: 1; }
+.sticky-step.is-active .how-number { background: var(--marker); }
+.sticky-step-text {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+.sticky-step-text strong { font-size: 22px; }
+.sticky-step-text > span { color: var(--muted); line-height: 1.6; }
+.step-inline-panel { display: none; } /* only on phones */
+
+.sticky-panel-column {
+  flex: 1 1 0;
+  min-width: 0;
+  align-self: stretch; /* as tall as the steps, so the panel has room to stay pinned */
+}
+.sticky-panel {
+  position: sticky; /* stays in place while the steps beside it scroll */
+  top: 120px;
+  display: grid;
+  gap: 14px;
+}
+.sticky-panel-inner { animation: panel-in 0.3s ease both; }
+.sticky-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+.sticky-dot {
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--rule);
+  transition: width 0.2s ease, background 0.2s ease;
+}
+.sticky-dot.is-active {
+  width: 26px;
+  background: var(--ink);
+}
+
+/* the mini screens inside the panel */
+.mini-screen {
+  display: grid;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.07);
+}
+.mini-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--rule);
+}
+.mini-total { border-bottom: 0; padding-bottom: 0; font-weight: 600; }
+.mini-amount { display: flex; align-items: center; gap: 8px; }
+.mini-paypal {
+  text-align: center;
+  background: #ffc439; /* PayPal's button yellow */
+  border-radius: 999px;
+  padding: 11px;
+  font-weight: 700;
+}
+.mini-submit {
+  text-align: center;
+  background: var(--ink);
+  color: #fff;
+  border-radius: 8px;
+  padding: 10px;
+  font-weight: 600;
+}
+.mini-note { font-size: 13.5px; color: var(--muted); }
+.mini-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 9px 12px;
+  color: var(--muted);
+}
+.mini-result {
+  display: grid;
+  gap: 2px;
+  font-size: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--rule);
+}
+.mini-screen mark { background: var(--marker); color: inherit; }
+.mini-quote { margin: 0; font-size: 16px; line-height: 1.5; }
+.mini-quote s { opacity: 0.4; }
+.mini-buttons { display: flex; gap: 8px; }
+.mini-buttons span {
+  flex: 1;
+  text-align: center;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 9px;
+  font-size: 14px;
+}
+
+/* "Open now" with "See all contests" on the right */
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.section-head h2 { margin-bottom: 0; }
+.section-head a { color: var(--ink); font-weight: 500; }
+
+/* questions: each opens and closes by itself */
+.faq { max-width: 760px; }
+.faq details {
+  border-top: 1px solid var(--rule);
+  padding: 18px 0;
+}
+.faq details:last-of-type { border-bottom: 1px solid var(--rule); }
+.faq summary {
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: 600;
+  list-style: none; /* hide the browser's own triangle... */
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: "+"; color: var(--muted); } /* ...and show + or − instead */
+.faq details[open] summary::after { content: "\2212"; } /* a minus sign, written as its code so it shows correctly everywhere */
+.faq details p {
+  margin: 10px 0 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* the closing call to action: a dark band */
+.closing {
+  margin-top: 88px;
+  background: var(--ink);
+  color: #fff;
+  border-radius: 20px;
+  padding: 56px 40px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+.closing h2 {
+  margin: 0;
+  max-width: 620px;
+  font-size: clamp(28px, 4vw, 40px);
+  line-height: 1.12;
+  color: #fff;
+}
+.closing-mark {
+  color: var(--ink);
+  background-image: linear-gradient(transparent 8%, var(--marker) 8%, var(--marker) 92%, transparent 92%);
+}
+/* the buttons, restyled for the dark band */
+.closing .button-link {
+  color: #fff;
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.35);
+}
+.closing .button-link.btn-primary {
+  color: var(--ink);
+  background: var(--marker);
+  border-color: var(--marker);
+}
+.home-footer {
+  margin-top: 40px;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* sections fade and slide in the first time they appear */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.reveal.is-shown {
+  opacity: 1;
+  transform: none;
+}
+@keyframes panel-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* tablets and phones: no pinning. Every step is fully shown, with its own mini screen under it. */
+@media (max-width: 860px) {
+  .preview-card { transform: none; }
+  .sticky-panel-column { display: none; }
+  .step-inline-panel { display: block; margin-top: 8px; }
+  .sticky-step { opacity: 1; padding: 32px 0; }
+  .sticky-step .how-number { background: var(--marker); }
+  .closing { padding: 40px 24px; }
+}
+
+/* phones: the logo on its own line, with the links in one tidy row below it */
+@media (max-width: 560px) {
+  .header-inner {
+    flex-wrap: wrap;
+    row-gap: 8px;
+    padding-top: 12px;
+    padding-bottom: 8px;
+  }
+  .header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+/* for anyone whose computer is set to reduce motion: everything shows, nothing moves */
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .sticky-panel-inner { animation: none; }
+  .sticky-step, .sticky-dot, .how-number { transition: none; }
+}
+
+/* ---------- Contest pages: tabs, and searching the episodes ---------- */
+
+/* "Contest" and "Search the episodes", under the contest's title */
+.contest-tabs {
+  display: flex;
+  gap: 4px;
+  margin-top: 24px;
+  border-bottom: 1px solid var(--rule);
+  flex-wrap: wrap;
+}
+.contest-tab {
+  padding: 10px 14px;
+  margin-bottom: -1px; /* sits on top of the line below */
+  border-bottom: 3px solid transparent;
+  color: var(--muted);
+  font-weight: 500;
+  text-decoration: none;
+}
+.contest-tab:hover { color: var(--ink); }
+.contest-tab[aria-current="page"] {
+  color: var(--ink);
+  font-weight: 600;
+  border-bottom-color: var(--marker);
+}
+
+/* "Looking for clips?" on the contest page, pointing to the search */
+.search-callout {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  column-gap: 16px;
+  align-items: center;
+  margin-bottom: 24px;
+  padding: 16px 18px;
+  background: var(--marker-soft);
+  border: 1px solid #e9cf4f;
+  border-radius: 12px;
+  color: var(--ink);
+  text-decoration: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.search-callout span:not(.search-callout-arrow) { grid-column: 1; color: #4a4d52; }
+.search-callout-arrow {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  font-size: 22px;
+}
+.search-callout:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+}
+
+/* the search, front and center on its page */
+.episode-search {
+  display: grid;
+  gap: 8px;
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+}
+.episode-search .eyebrow { margin: 0; }
+.episode-search > .block { margin-top: 0; } /* the search box brings its own spacing; not needed inside this box */
+
+/* two buttons side by side in a list row, like "Search episodes" and "View contest" */
+.row-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .search-callout { transition: none; }
+  .search-callout:hover { transform: none; }
+}
+
+.welcome {
+  display: grid;
+  gap: 18px;
+  padding: 32px 0 8px;
+  max-width: 760px;
+}
+.welcome h1 {
+  margin: 0;
+  font-size: clamp(30px, 5vw, 44px);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+.welcome .hero-lede { margin: 0; }
+ 
+/* your name in the header, as a link to your account */
+.account-name {
+  text-decoration: none;
+}
+.account-name:hover,
+.account-name[aria-current="page"] {
+  color: var(--ink);
+}
+ 
+/* the profile box */
+.account-profile {
+  display: grid;
+  gap: 20px;
+}
+.inline-field {
+  display: flex;
+  gap: 8px;
+}
+.inline-field input {
+  flex: 1;
+  min-width: 0;
+}
+.account-facts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+.account-facts dt {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.account-facts dd {
+  margin: 4px 0 0;
+}
+.account-group {
+  margin-top: 20px;
+}
+.account-group h3 {
+  font-size: 16px;
+  margin: 0 0 10px;
+}

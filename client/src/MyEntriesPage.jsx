@@ -5,12 +5,12 @@ import { useAuth } from "./auth";
 import { formatMoney } from "./format";
  
 // "Nov 20"
-function shortDate(iso) {
+export function shortDate(iso) {
     return new Date(iso).toLocaleDateString([], { month: "short", day: "numeric" });
 }
  
 // where an entry stands, in a sentence a fan would understand.
-function describe(entry) {
+export function describe(entry) {
     if (entry.win) {
         const prize = `You won ${entry.win.placeLabel} place: ${formatMoney(entry.win.prizeCents)}!`;
         if (entry.win.paymentStatus === "SUCCESS") return `${prize} It's been sent to your PayPal.`;
@@ -43,7 +43,7 @@ export default function MyEntriesPage() {
         <>
             <div className="page-head">
                 <h1>My entries</h1>
-                <p>Every contest you've entered {profile ? `, ${profile.name}` : ""}.</p>
+                <p>Every contest you've entered{profile ? `, ${profile.name}` : ""}.</p>
             </div>
 
             {problem && <p className="alert">{problem}</p>}
