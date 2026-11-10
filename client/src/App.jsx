@@ -34,7 +34,7 @@ export default function App() {
     <AuthProvider>
       {serverDown && (
         <div className="banner" role="alert">
-          Can't reach the server. Start it with npm run dev in the server folder, then refresh.
+          Can't reach the server right now. Try again in a minute.
         </div>
       )}
 
