@@ -93,7 +93,7 @@ function SiteHeader({wide}) {
 
   async function handleLogOut() {
     await logOut();
-    navigate("/browse");
+    navigate("/");
   }
 
   return (
