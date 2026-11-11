@@ -9,7 +9,7 @@ function destination(next,role) {
     // makes sure its a path (starts with "/") and not a full address ("//") which could maliciously
     // lead the user somewhere else (open redirect)
     if (next && next.startsWith("/") && !next.startsWith("//")) return next;
-    return role ==="creator" ? "/contests" : "/browse";
+    return "/";
 }
 
 export default function AuthPage({mode}) {
@@ -45,7 +45,7 @@ export default function AuthPage({mode}) {
             } else {
                 profile = await logIn({email: email.trim(), password});
             }
-            navigate(destination(next, profile ? profile.role : "fan"), {replace: true});
+            navigate(destination(next), {replace: true});
         } catch (err) {
             setProblem(authErrorMessage(err));
         } finally {

@@ -3,6 +3,7 @@ import {getDownloadURL, ref} from "firebase/storage";
 import {storage} from "./firebase";
 import {API_URL, authFetch} from "./api";
 import {formatTime} from "./format";
+import {MIN_DECISIONS, predictTaste, trainTaste} from "./tasteModel";
 
 // review groups, in order the creator sees them
 const GROUPS = [
@@ -60,7 +61,7 @@ function StepIndicator({entry}) {
 
 }
 // selected / onToggle: whether the card is ticked for a bulk action (and how to tick or untick it)
-function EntryCard({entry, onDecide, onRescreen, selected, onToggle}) {
+function EntryCard({entry, onDecide, onRescreen, selected, onToggle , taste}) {
     const [videoUrl, setVideoUrl] = useState("");
     const [busy, setBusy] = useState(false);
     const screening = entry.screening;
@@ -68,6 +69,24 @@ function EntryCard({entry, onDecide, onRescreen, selected, onToggle}) {
     const segments = screening?.segments ?? [];
     const group = groupOf(entry);
     const canRescreen = group === "error" || flags.some((f) => f.type === "unchecked");
+
+    // a guess at how the creator would decide, for screened entries they haven't decided on yet
+    let guess = null;
+    let guessText = "";
+    if (taste && screening && !entry.creatorDecision && group !== "screening" && group !== "error") {
+        guess = predictTaste(taste,entry);
+
+        // percentage for whichever way it leans, so it never says "likely reject (4%)"
+        let percent = guess.shortlistChance;
+        if (guess.leaning === "reject") percent = 1 - guess.shortlistChance;
+        percent = Math.round(percent * 100);
+
+        if (guess.leaning === "shortlist") {
+            guessText=`Likely shortlist (${percent}%)`;
+        } else {
+            guessText = `Likely reject (${percent}%)`;
+        }
+    }
 
     // video only loads when asked, so a long list of entries stays fast
     async function watch() {
@@ -107,6 +126,15 @@ function EntryCard({entry, onDecide, onRescreen, selected, onToggle}) {
                     </div>
                 </div>
             </div>
+            
+            {/* your taste: the naive bayes guess, with the two features that pushed it the most*/}
+            {guess && (
+                <p className={`taste taste-${guess.leaning}`}>
+                    <span className="taste-label">Your taste</span>
+                    {guessText}
+                    {guess.reasons.length > 0 && <span className="muted"> · {guess.reasons.join(", ")}</span>}
+                </p>
+            )}
 
             {group === "screening" && <StepIndicator entry = {entry} />}
             {group === "error" && <p className="alert">{entry.error || "Screening failed."}</p>}
@@ -316,10 +344,27 @@ export default function EntryReview({contestId, onChange}) {
     }
 
     if (!entries) return <p className="notice">{problem || "Loading entries..."}</p>;
+    const taste = trainTaste(entries);
+    let tasteNote = "";
+    if (taste.ready) {
+        tasteNote = `Your taste: learned from your ${taste.decided} decisions in this contest. A guess to help you sort, never a rule.`;
+
+    } else {
+        tasteNote = `Your taste: after at least ${MIN_DECISIONS} decisions in this contest (with at 
+        least one shortlist and one reject), each entry you haven't reviewed gets a guess at how you'd 
+        decide, learned from your choices.`;
+
+    }
+
+    // cards only get the model once its ready
+    let readyTaste = null;
+    if (taste.ready) readyTaste = taste;
+
 
     return (
         <section>
             {problem && <p className="alert">{problem}</p>}
+            {entries.length > 0 && <p className="hint taste-note">{tasteNote}</p>}
             {entries.length===0 && <p className="notice">No entries yet. Share your contest link to get some.</p>}
 
             {entries.length > 0 &&
@@ -357,6 +402,7 @@ export default function EntryReview({contestId, onChange}) {
                                             onRescreen={rescreen}
                                             selected={selected.includes(entry.id)}
                                             onToggle={() => toggle(entry.id)}
+                                            taste={readyTaste}
                                         />                                    
                                     ))}
                                 </ul>
