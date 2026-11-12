@@ -142,7 +142,7 @@ Money can't be taken back once it's sent, so paying winners is built to be safe 
 ## What's next
 
 - **Verifying creators:** Try to connect a creator's YouTube channel via a Youtube API to prove they really own their channel, so nobody can run a contest pretending to be a famous creator. Not only that, but there could be the possibility of importing/transcribing a creator's videos automatically via YouTube's API, which would completely get rid of requiring creator's to upload their episodes one-by-one!
-- **Prizes and the law:** Prize contests do have real rules. Contests judged on skill (like the best edit) are generally treated differently from random giveaways, but a live version would need official context rules, eligibility (like age limits), and possibly tax reporting for larger prizes.
+- **Prizes and the law:** Prize contests do have real rules. Contests judged on skill (like the best edit) are generally treated differently from random giveaways, but a live version would need official contest rules, eligibility (like age limits), and possibly tax reporting for larger prizes.
 - **Notifications:** Email fans when screening finishes, when winners are announced, and when they've been paid!
 - **Retrying one winner's failed payment:** if PayPal accepts a payout but one winner's payment fails (for example, if their entry used the platform's own PayPal account), the creator sees it marked Failed, but can't yet resend just that payment from the app. Thus, I would need to implement a Retry button for failed payments.
 - **The entry limit is per PayPal email for signed-out fans,** so a determined fan could enter twice with two emails. Signed-in fans are limited per account too, and duplicate detection and the creator's review help catch the rest.
