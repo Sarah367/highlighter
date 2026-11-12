@@ -116,7 +116,7 @@ Money can't be taken back once it's sent, so paying winners is built to be safe 
 
 Open https://highlighter-f3f71.web.app. Everything runs in PayPal's sandbox, so no real money moves.
 
-- **Demo creator account:** [email] / [password] (a contest is already running, with screened entries)
+- **Demo creator account:** [demo123@gmail.com] / [Cookie123!] (a contest is already running, with screened entries)
 - **PayPal sandbox buyer (to fund a contest):** [sb-yzfr853854886@personal.example.com] / [8"$Cf7E%]
 - **To enter as a fan:** open any contest from Browse contests. No account needed.
 
