@@ -207,22 +207,6 @@ node scripts/test-taste.mjs                                      # the Naive Bay
 
 **Deploying:** the server deploys to Render from `main` (root directory `server`, start command `npm start`, with the same keys as environment variables, plus `FIREBASE_SERVICE_ACCOUNT` holding the key file's contents, and `CLIENT_ORIGIN` set to the app's address). The app deploys with `npm run build` in `client`, then `firebase deploy --only hosting`, with `VITE_API_URL` in `client/.env.production`.
 
-## Key decisions
-
-- **AI flags, the creator decides.** Screening never rejects an entry or picks a winner on its own.
-- **Prizes are funded up front.** Fans risk their creative work, so creators risk their money, with refunds protecting both: unused places are refunded, and places are filled in order without skipping.
-- **Only flagged and rejected entries are disqualified.** An entry the creator rejects for taste, with no flag, stays in good standing, since taste isn't a rule violation.
-- **A contest's "closed" status is worked out from its deadline,** not stored, so it can never fall out of sync.
-- **Accounts are optional for fans,** so entering a contest stays easy.
-
-## Known limitations and next steps
-
-- **Retrying one winner's failed payment:** if PayPal accepts a payout but one winner's payment fails (for example, if their entry used the platform's own PayPal account), the creator sees it marked Failed, but can't yet resend just that payment from the app. Next: a Retry button for failed payments, plus a warning when an entry's PayPal email is the platform's own account.
-- **The entry limit is per PayPal email for signed-out fans,** so a determined fan could enter twice with two emails. Signed-in fans are limited per account too, and duplicate detection and the creator's review help catch the rest.
-- **Your taste learns per contest,** from a handful of decisions. With more data, it could learn across all of a creator's contests, or use a model like logistic regression, which handles connected features (like the two context flags) better.
-- **Search by creator:** creator profiles, so fans can find contests by the creators they follow.
-- **Sandbox only:** payments run in PayPal's sandbox.
-
 ## License
 
 MIT
