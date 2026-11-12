@@ -112,6 +112,45 @@ Money can't be taken back once it's sent, so paying winners is built to be safe 
 - Firebase security rules cover what the browser touches directly: anyone can read episodes, only a signed-in creator can create one (as its owner), uploads go into each creator's own folder, and contests and entries are only reachable through the server.
 - Creators can't enter their own contests.
 
+## Key decisions
+
+- **AI flags, the creator decides.** Screening never rejects an entry or picks a winner on its own.
+- **Prizes are funded up front.** Fans risk their creative work, so creators risk their money, with refunds protecting both: unused places are refunded, and places are filled in order without skipping.
+- **Only flagged and rejected entries are disqualified.** An entry the creator rejects for taste, with no flags, stays in good standing, since taste isn't a rule violation. The reason why rejected entries can still be chosen as winners is to prevent creators from deliberately running fan contests and then rejecting every entry. Creators might do this in order to steal their fans' creativity or just to simply avoid paying them. Even if a contest has fewer winners than prizes, the creator still must reward the participants for their work. For example, if a contest has 3 total prizes, but only 1 fan entered (rare but possible), then the creator would award them the 1st place prize (awards prizes from the top-down) IF the fan's entry had no flags and was in good standing. The creator cannot cheat the system and end the contest without paying the fan with a legitimate entry, because that would be discrediting and disrespectful to the fan. Thus, on the flip side, if that entry was flagged (for example, as a high-risk out-of-context edit), it's disqualified, and since no entries are left in good standing, the creator is refunded the whole prize pool! Creators never pay for an entry that actually broke the rules.
+- **A contest's "closed" status is worked out from its deadline,** not stored, so it can never fall out of sync.
+- **Accounts are optional for fans,** so entering a contest stays easy.
+
+## Challenges I ran into
+
+- **Catching fake quotes took four versions.** My first attempts only showed Gemini the clipped words, so it couldn't tell that "I hate my fans" came from "Some people say I hate my fans, but that's not true at all." What finally worked was doing the hard work before Gemini ever sees anything: tracing every piece back to the exact moment in the creator's episode, giving Gemini the full original sentence for each piece, and making it review every piece one at a time before it's allowed to list any problems. I built a regression test of real cases (fake quotes, splices, and fair edits) along the way, and watched it go from 3 to 7 out of 7 passing.
+- **Paying winners without paying anyone twice.** Money can't be taken back once it's sent, so I had to think about what happens if someone double-clicks "Pay," or if PayPal fails halfway through. I ended up claiming the contest in a Firestore transaction first, refunding unused prizes before paying anyone, and giving every payout a unique batch ID that PayPal refuses to process twice.
+- **A payment that kept failing.** During testing, one winner's payment came back as `SELF_PAY_NOT_ALLOWED`. It turned out the entry had used my platform's own PayPal business account, and PayPal doesn't let an account pay itself. It's now one of my known limitations, with a plan to warn creators about it.
+- **Figuring out how to upload creator episodes.** I wanted to figure out a simple but efficient way to import creator episodes. Since uploading creator episodes wasn't my main priority, I decided to go with a simple form that lets creators upload their episodes. There are some issues with this, since creators need to upload their episodes one-by-one. What if a creator has thousands of episodes, which is often the case for big creators with a large fanbase? How would they handle this? I have researched into integrating YouTube's API, so that in the near future, creator's can simply sign-in to their YouTube (which also verifies that they are the real creator) and YouTube's API automatically imports their episodes. This would be much more efficient than having creators upload their episodes one-by-one.
+- **Building Naive Bayes from scratch.** I learned about it in class, but actually choosing features was harder than the math. I first included entry length, then realized a fixed cutoff meant nothing across contests, and with only a few decisions, extra features just let the model learn coincidences. Testing even caught it naming "fits the brief" as a reason to reject something, which is why it only names a reason now if it's at least 1.5 times more common on one side.
+- **Realizing hiding pages isn't security.** At first, anyone with the link could open creator pages and even pay out winners. Adding accounts taught me that hiding a button only changes what people see, so now the server checks every request: who's signed in, and whether they actually own the contest.
+
+## What I learned
+
+- **How to make AI reliable instead of just impressive.** Gemini got much more accurate once I gave it the full context (the original sentence around every clip) and made it reason step by step before giving a verdict. I also learned to use AI only for what it's good at: plain text matching handles where the words came from, and Gemini only judges what they mean.
+- **AI should flag, and humans should decide.** The more I built, the more sure I became that the AI should never reject an entry or pick a winner on its own. Every flag comes with a reason, and the creator always makes the final call when it comes to rejecting/shortlisting an entry as well as choosing winners.
+- **Naive Bayes Classifier** Building it myself taught me what Laplace smoothing is actually for, why the math is done with logarithms, and what happens when the "naive" independence assumption breaks (my two context flags aren't independent at all).
+- **Handling money safely.** Idempotency, transactions, and doing the repeatable step first were all new to me, and now I think about "what if this runs twice?" for anything important, such as double charging a user.
+- **Never trust what the browser says.** Although this might seem like a simple thing to learn, I found myself often implementing functions that directly take in user input from the browser instead of going through server validation first. I learned to always verify user input, since users can always spoof requests, especially those containing sensitive information.
+- **Designing for two kinds of users.** Creators and fans want different things, so I made accounts required for creators but optional for fans, to keep entering a contest as easy as possible!
+- **Shipping a real product.** Deploying to Render and Firebase Hosting, writing security rules, and testing everything live taught me how much work happens after the code "works on my computer."
+
+## What's next
+
+- **Verifying creators:** Try to connect a creator's YouTube channel via a Youtube API to prove they really own their channel, so nobody can run a contest pretending to be a famous creator. Not only that, but there could be the possibility of importing/transcribing a creator's videos automatically via YouTube's API, which would completely get rid of requiring creator's to upload their episodes one-by-one!
+- **Prizes and the law:** Prize contests do have real rules. Contests judged on skill (like the best edit) are generally treated differently from random giveaways, but a live version would need official context rules, eligibility (like age limits), and possibly tax reporting for larger prizes.
+- **Notifications:** Email fans when screening finishes, when winners are announced, and when they've been paid!
+- **Retrying one winner's failed payment:** if PayPal accepts a payout but one winner's payment fails (for example, if their entry used the platform's own PayPal account), the creator sees it marked Failed, but can't yet resend just that payment from the app. Thus, I would need to implement a Retry button for failed payments.
+- **The entry limit is per PayPal email for signed-out fans,** so a determined fan could enter twice with two emails. Signed-in fans are limited per account too, and duplicate detection and the creator's review help catch the rest.
+- **Your taste learns per contest,** from a handful of decisions. With more data, it could learn across all of a creator's contests, or use a model like logistic regression, which handles connected features (like the two context flags which are Context and High Context) better.
+- **Search by creator:** creator profiles, so fans can find contests by the creators they follow.
+- **Most popular contests today:** Fans can see a list of the most popular/active contests.
+- **Sandbox only:** payments run in PayPal's sandbox.
+
 ## Try it!
 
 Open https://highlighter-f3f71.web.app. Everything runs in PayPal's sandbox, so no real money moves.
